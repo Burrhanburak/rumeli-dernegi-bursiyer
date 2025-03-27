@@ -33,6 +33,7 @@ class AdminPanelProvider extends PanelProvider
             ->login(AdminLogin::class)
             ->brandName('Rumeli Admin Panel')
             // ->brandLogo(asset('images/logo.svg'))
+            ->domain('https://rumeli-dernegi-bursiyer-main-pxjwej.laravel.cloud')
             ->favicon(asset('images/favicon.ico'))
             ->colors([
                 'primary' => Color::Blue,
@@ -66,6 +67,7 @@ class AdminPanelProvider extends PanelProvider
                 DispatchServingFilamentEvent::class,
             ])
             ->authMiddleware([
+                 \App\Http\Middleware\RedirectToProperPanelMiddleware::class,
                 Authenticate::class,
             ])
             ->authGuard('web');
