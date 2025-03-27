@@ -1,0 +1,39 @@
+<?php
+
+namespace App\Filament\Resources\DocumentResource\Pages;
+
+use App\Filament\Resources\DocumentResource;
+use Filament\Actions;
+use Filament\Resources\Pages\EditRecord;
+
+class EditDocument extends EditRecord
+{
+    protected static string $resource = DocumentResource::class;
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            Actions\ViewAction::make()
+                ->label('Görüntüle')
+                ->icon('heroicon-o-eye')
+                ->color('info'),
+            Actions\DeleteAction::make()
+                ->label('Sil')
+                ->icon('heroicon-o-trash')
+                ->color('danger'),
+        ];
+    }
+    protected function getFormActions(): array
+    {
+        return [
+            Actions\Action::make('save')
+                ->label('Kaydet')
+                ->submit('save')
+                ->keyBindings(['mod+s']),
+            Actions\Action::make('cancel')
+                ->label('İptal')
+                ->url($this->previousUrl ?? static::getResource()::getUrl())
+                ->color('secondary'),
+        ];
+    }
+}

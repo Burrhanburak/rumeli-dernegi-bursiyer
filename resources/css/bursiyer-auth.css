@@ -1,0 +1,80 @@
+/* resources/css/bursiyer-auth.css */
+.filament-login-page,
+.filament-register-page {
+    background-image: url('/images/background.jpg');
+    background-size: cover;
+    background-position: center;
+}
+
+.filament-login-page .filament-card,
+.filament-register-page .filament-card {
+    background-color: rgba(255, 255, 255, 0.9);
+    border-radius: 1rem;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+}
+
+.filament-button {
+    border-radius: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.filament-button-primary {
+    background-color: #4338ca; /* Indigo-700 */
+    color: white;
+}
+
+.filament-button-primary:hover {
+    background-color: #3730a3; /* Indigo-800 */
+    transform: translateY(-2px);
+}
+
+.filament-input {
+    border-radius: 0.5rem;
+    border: 2px solid #e5e7eb;
+    padding: 0.75rem 1rem;
+}
+
+.filament-input:focus {
+    border-color: #4338ca;
+    box-shadow: 0 0 0 2px rgba(67, 56, 202, 0.25);
+}
+
+.filament-login-page .filament-header,
+.filament-register-page .filament-header {
+    text-align: center;
+}
+
+.filament-login-page .filament-header-heading,
+.filament-register-page .filament-header-heading {
+    font-size: 1.875rem;
+    color: #4338ca;
+    font-weight: 700;
+}
+
+.filament-checkbox {
+    border-radius: 0.25rem;
+    border: 2px solid #4338ca;
+}
+
+.filament-checkbox:checked {
+    background-color: #4338ca;
+}
+
+.filament-link {
+    color: #4338ca;
+    font-weight: 600;
+}
+
+.filament-link:hover {
+    color: #3730a3;
+    text-decoration: underline;
+}
+
+/* Özel logo stiliniz */
+.bursiyer-logo {
+    max-width: 200px;
+    margin: 0 auto 1.5rem auto;
+    display: block;
+}
