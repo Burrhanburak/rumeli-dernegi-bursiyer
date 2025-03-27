@@ -37,7 +37,7 @@ class UserPanelProvider extends PanelProvider
             ->path('user')
             ->login(BaseLogin::class)
             ->profile()
-           ->domain('https://rumeli-dernegi-bursiyer-main-pxjwej.laravel.cloud')
+           
             ->defaultThemeMode(ThemeMode::Light)
             ->brandName('Rumeli Türkleri Derneği')
             
@@ -74,7 +74,7 @@ class UserPanelProvider extends PanelProvider
                 DispatchServingFilamentEvent::class,
             ])
             ->authMiddleware([
-                RedirectToProperPanelMiddleware::class,
+                // RedirectToProperPanelMiddleware::class,
                 Authenticate::class,
                 
             ])
