@@ -108,12 +108,7 @@ class DocumentUploadResource extends Resource
         return $table
         ->emptyStateHeading('Evrak yüklemeniz Yok')
         ->emptyStateDescription('Herhangi bir evrak yüklemeniz bulunamadı.')
-        ->emptyStateActions([
-            Tables\Actions\CreateAction::make('evrak_yukle')
-                ->label('Evrak Yükle')
-                ->icon('heroicon-o-document-arrow-up')
-                ->color('success'),
-        ])
+        
             ->columns([
                 Tables\Columns\ImageColumn::make('file_path')
                     ->label('Belge')

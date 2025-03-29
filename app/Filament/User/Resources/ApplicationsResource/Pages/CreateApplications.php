@@ -83,8 +83,9 @@ class CreateApplications extends CreateRecord
             }),
             'all_data' => $data,
         ]);
-        
+
         dd($data);
+        
         return $data;
     }
     

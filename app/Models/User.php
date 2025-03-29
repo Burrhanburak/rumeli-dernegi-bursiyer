@@ -12,8 +12,9 @@ use Illuminate\Support\Str;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Filament\Models\Contracts\HasAvatar;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 
-class User extends Authenticatable implements FilamentUser, HasAvatar
+class User extends Authenticatable implements FilamentUser, HasAvatar ,MustVerifyEmail
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable;
@@ -40,6 +41,8 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
         'phone',
         'email',
         'address',
+        'password_confirmation',
+        'terms',
         'city', // sehir
         'postal_code', // posta_kodu
         'physical_disability', // beden_ozru
@@ -155,6 +158,7 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
             'is_active' => 'boolean',
             'is_admin' => 'boolean',
             'birth_date' => 'date', // dogum_tarihi
+            'terms' => 'boolean',
         ];
     }
 

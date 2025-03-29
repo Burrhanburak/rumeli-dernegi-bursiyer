@@ -12,14 +12,50 @@ use Illuminate\Contracts\Support\Htmlable;
 use App\Models\User;
 use Filament\Facades\Filament;
 use Filament\Actions\Action;
-
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rules\Password;
 use Ysfkaya\FilamentPhoneInput\Forms\PhoneInput;
 use Ysfkaya\FilamentPhoneInput\Tables\PhoneColumn;
 use Ysfkaya\FilamentPhoneInput\Infolists\PhoneEntry;
 use Ysfkaya\FilamentPhoneInput\PhoneInputNumberType;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Auth\Events\Registered;
+use Exception;
+use Filament\Notifications\Notification;
+use Filament\Pages\Auth\VerifyEmail;
+use Filament\Http\Responses\Auth\Contracts\RegistrationResponse;
+use Filament\Http\Responses\Auth\Contracts\LoginResponse;
+use DanHarrin\LivewireRateLimiting\Exceptions\TooManyRequestsException;
+use DanHarrin\LivewireRateLimiting\WithRateLimiting;
+use App\Notifications\VerifyTestNotification;
 
 class Register extends BaseRegister 
 {
+    use WithRateLimiting;
+    
+    protected static string $model = User::class;
+
+    protected string $userModel;
+
+    public function mount(): void
+    {
+        if (Filament::auth()->check()) {
+            redirect()->intended(Filament::getUrl());
+        }
+
+        $this->callHook('beforeFill');
+
+        $this->form->fill();
+
+        $this->callHook('afterFill');
+    }
+
+    protected function getModel(): string
+    {
+        return static::$model;
+    }
+
     // protected static string $view = 'filament.user.pages.auth.register';
     
     protected function getCachedSubNavigation(): array
@@ -29,23 +65,21 @@ class Register extends BaseRegister
 
     public function getTitle(): string | Htmlable
     {
-        return __('Bursiyer Başvuru');
+        return __('Hesap Oluştur');
     }
 
     public function getHeading(): string | Htmlable
     {
-        return __('Bursiyer Başvuru');
+        return __('Hesap Oluştur');
     }
-    
-    public function getSubheading(): string | Htmlable | null
-    {
-        return __('Hesabınız yok mu? Hemen kayıt olun.');
-    }
+  
     
     public function form(Form $form): Form
     {
         return $form
             ->schema([
+                $this->getNameFormComponent(),
+                $this->getSurnameFormComponent(),
                 $this->getTCKimlikFormComponent(),
                 $this->getDogumTarihiFormComponent(),
                 $this->getPhoneFormComponent(),
@@ -57,6 +91,32 @@ class Register extends BaseRegister
             ->statePath('data');
     }
  
+    protected function getNameFormComponent(): Component
+    {
+        return TextInput::make('name')
+            ->label('Ad')
+            ->placeholder('Adınızı giriniz')
+            ->required()
+            ->maxLength(255)
+            ->validationMessages([
+                'required' => 'Ad alanı zorunludur.',
+                'max' => 'Ad en fazla 255 karakter olabilir.'
+            ]);
+    }
+
+    protected function getSurnameFormComponent(): Component
+    {
+        return TextInput::make('surname')
+            ->label('Soyad')
+            ->placeholder('Soyadınızı giriniz')
+            ->required()
+            ->maxLength(255)
+            ->validationMessages([
+                'required' => 'Soyad alanı zorunludur.',
+                'max' => 'Soyad en fazla 255 karakter olabilir.'
+            ]);
+    }
+
     protected function getEmailFormComponent(): Component
     {
         return TextInput::make('email')
@@ -78,16 +138,25 @@ class Register extends BaseRegister
             ->placeholder('Şifrenizi giriniz')
             ->required()
             ->password()
+            ->revealable()
+            ->rule(Password::default())
+            ->dehydrateStateUsing(fn ($state) => Hash::make($state))
+            
             ->minLength(8)
-            ->rules([
-                'min:8',
-                'regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]+$/'
-            ])
+            // ->rules([
+            //     'min:8',
+            //     'regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]+$/'
+            // ])
             ->validationMessages([
                 'min' => 'Şifre en az 8 karakter uzunluğunda olmalıdır.',
                 'regex' => 'Şifre: büyük, küçük harf, rakam ve özel karakter içermelidir.'
-            ]);
-          
+            ])
+            ->helperText('Güçlü bir şifre için:')
+            ->helperText('• En az 8 karakter')
+            ->helperText('• En az bir büyük harf')
+            ->helperText('• En az bir küçük harf')
+            ->helperText('• En az bir rakam')
+            ->helperText('• En az bir özel karakter (@$!%*?&)');
     }
 
     protected function getPasswordConfirmationFormComponent(): Component
@@ -95,8 +164,10 @@ class Register extends BaseRegister
         return TextInput::make('password_confirmation')
             ->label('Şifre Tekrar')
             ->placeholder('Şifrenizi tekrar giriniz')
-            ->required()
+             ->required()
             ->password()
+            ->revealable()
+              ->dehydrated(false)
             ->same('password')
             ->validationMessages([
                 'same' => 'Şifreler eşleşmiyor.'
@@ -106,7 +177,7 @@ class Register extends BaseRegister
 
     protected function getTCKimlikFormComponent(): Component
     {
-        return TextInput::make('tc_kimlik_no')
+        return TextInput::make('national_id')
             ->label('TC Kimlik No')
             ->placeholder('TC Kimlik numaranızı giriniz')
             ->required()
@@ -114,7 +185,7 @@ class Register extends BaseRegister
             ->maxLength(11)
             ->minLength(11)
             ->numeric()
-            ->rules(['regex:/^[1-9]{1}[0-9]{9}[02468]{1}$/'])
+            // ->rules(['regex:/^[1-9]{1}[0-9]{9}[02468]{1}$/'])
             ->validationMessages([
                 'unique' => 'Bu TC Kimlik Numarası zaten kayıtlı.',
                 'regex' => 'Geçerli bir TC Kimlik Numarası girmelisiniz.'
@@ -124,7 +195,7 @@ class Register extends BaseRegister
 
     protected function getDogumTarihiFormComponent(): Component
     {
-        return DatePicker::make('dogum_tarihi')
+        return DatePicker::make('birth_date')
             ->label('Doğum Tarihi')
             ->required()
             ->maxDate(now()->subYears(18))
@@ -189,5 +260,104 @@ class Register extends BaseRegister
         return Action::make('login')
             ->label('Giriş Yap')
             ->url(route('filament.user.auth.login'));
+    }
+
+    public function register(): ?RegistrationResponse
+    {
+        try {
+            $this->rateLimit(2);
+        } catch (TooManyRequestsException $exception) {
+            $this->getRateLimitedNotification($exception)?->send();
+
+            return null;
+        }
+
+        $user = $this->wrapInDatabaseTransaction(function () {
+            $this->callHook('beforeValidate');
+
+            $data = $this->form->getState();
+
+            $this->callHook('afterValidate');
+
+            $data = $this->mutateFormDataBeforeRegister($data);
+
+            $this->callHook('beforeRegister');
+
+            $user = $this->handleRegistration($data);
+
+            $this->form->model($user)->saveRelationships();
+
+            $this->callHook('afterRegister');
+
+            return $user;
+        });
+
+        event(new Registered($user));
+
+        $this->sendEmailVerificationNotification($user);
+
+        Filament::auth()->login($user);
+
+        session()->regenerate();
+
+        return app(RegistrationResponse::class);
+    }
+
+    protected function getRateLimitedNotification(TooManyRequestsException $exception): ?Notification
+    {
+        return Notification::make()
+            ->title(__('filament-panels::pages/auth/register.notifications.throttled.title', [
+                'seconds' => $exception->secondsUntilAvailable,
+                'minutes' => $exception->minutesUntilAvailable,
+            ]))
+            ->body(array_key_exists('body', __('filament-panels::pages/auth/register.notifications.throttled') ?: []) ? __('filament-panels::pages/auth/register.notifications.throttled.body', [
+                'seconds' => $exception->secondsUntilAvailable,
+                'minutes' => $exception->minutesUntilAvailable,
+            ]) : null)
+            ->danger();
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    protected function handleRegistration(array $data): Model
+    {
+        return $this->getUserModel()::create($data);
+    }
+
+    protected function sendEmailVerificationNotification(Model $user): void
+    {
+        if (! $user instanceof MustVerifyEmail) {
+            return;
+        }
+
+        if ($user->hasVerifiedEmail()) {
+            return;
+        }
+
+        if (! method_exists($user, 'notify')) {
+            $userClass = $user::class;
+
+            throw new Exception("Model [{$userClass}] does not have a [notify()] method.");
+        }
+
+        $notification = app(VerifyTestNotification::class, ['token' => '']);
+        $notification->url = Filament::getVerifyEmailUrl($user);
+
+        $user->notify($notification);
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    protected function mutateFormDataBeforeRegister(array $data): array
+    {
+        return $data;
+    }
+
+    protected function getUserModel(): string
+    {
+        return static::$model;
     }
 }

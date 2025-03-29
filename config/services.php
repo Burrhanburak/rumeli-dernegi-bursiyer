@@ -24,9 +24,13 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
-    'resend' => [
-        'key' => env('RESEND_KEY'),
+   'resend' => [
+    'key' => env('RESEND_API_KEY'),
+    'from' => [
+        'address' => env('MAIL_FROM_ADDRESS', 'noreply@yourdomain.com'),
+        'name' => env('MAIL_FROM_NAME', 'Your App Name'),
     ],
+],
 
     'slack' => [
         'notifications' => [

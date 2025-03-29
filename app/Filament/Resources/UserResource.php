@@ -26,6 +26,8 @@ class UserResource extends Resource
     
     protected static ?string $navigationLabel = 'Kullanıcılar';
 
+    protected static ?string $navigationBadgeTooltip = 'Aktif Kullanıcılar';
+
     public static function form(Form $form): Form
     {
         return $form

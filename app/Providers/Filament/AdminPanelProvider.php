@@ -31,7 +31,7 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('admin')
             ->login(AdminLogin::class)
-            ->brandName('Rumeli Admin Panel')
+            ->brandName('Admin Panel')
             // ->brandLogo(asset('images/logo.svg'))
             ->favicon(asset('images/favicon.ico'))
             ->colors([

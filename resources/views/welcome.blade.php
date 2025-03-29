@@ -185,11 +185,11 @@
                                         Dashboard
                                     </a>
                                 @else
-                                    <a href="{{ url('user/login') }}" class="btn btn-outline">
-                                        Giriş Yap
+                                <a href="{{ url('user/login') }}" class="btn btn-outline px-5 py-5 text-sm sm:text-base">
+                                Giriş Yap
                                     </a>
-                                    <a href="{{ url('user/register') }}" class="btn btn-primary">
-                                        Hesap Oluştur
+                                    <a href="{{ url('user/register') }}" class="btn btn-primary px-5 py-5 text-sm sm:text-base">
+                                    Hesap Oluştur
                                     </a>
                                 @endauth
                             </div>
@@ -303,10 +303,10 @@
                             Bursiyerlik programımız için başvurular açıldı. Son başvuru tarihini kaçırmamak için hemen kayıt olun.
                         </p>
                         <div class="mt-8 flex justify-center gap-x-4">
-                            <a href="{{ url('user/register') }}" class="btn btn-primary px-5 py-3">
+                        <a href="{{ url('user/register') }}" class="btn btn-primary px-5 py-3 text-sm sm:text-base">
                                 Hesap Oluştur
                             </a>
-                            <a href="{{ url('user/login') }}" class="btn btn-outline">
+                            <a href="{{ url('user/login') }}" class="btn btn-outline px-5 py-3 text-sm sm:text-base">
                                 Giriş Yap
                             </a>
                         </div>

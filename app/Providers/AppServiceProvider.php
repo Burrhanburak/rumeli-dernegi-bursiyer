@@ -7,15 +7,24 @@ use Filament\Tables\Table;
 use Illuminate\Support\ServiceProvider;
 use Filament\Support\Facades\FilamentLabel;
 use Illuminate\Support\Facades\URL;
+use App\Listeners\SendEmailVerificationNotification;
+
 
 class AppServiceProvider extends ServiceProvider
 {
+
+
+    
     /**
      * Register any application services.
      */
     public function register(): void
     {
-        //
+        // Use your custom listener instead
+        $this->app->bind(
+            \Illuminate\Auth\Listeners\SendEmailVerificationNotification::class,
+            \App\Listeners\SendEmailVerificationNotification::class
+        );
     }
 
     /**

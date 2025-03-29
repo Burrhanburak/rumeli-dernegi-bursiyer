@@ -111,6 +111,23 @@ class ApplicationsResource extends Resource
                             ->required()
                             ->placeholder('Posta kodunuz')
                             ->maxLength(255),
+                        Forms\Components\Textarea::make('physical_disability')
+                            ->label('Fiziksel Engeliniz')
+                            ->placeholder('Fiziksel engeliniz varsa açıklayınız')
+                            ->columnSpanFull(),
+                        Forms\Components\Textarea::make('disability_description')
+                            ->label('Engel Açıklaması')
+                            ->placeholder('Engel durumunuzu detaylı açıklayınız')
+                            ->columnSpanFull(),
+                        Forms\Components\Select::make('disability_status')
+                            ->label('Engel Durumu')
+                            ->placeholder('Engel durumunuzu seçin')
+                            ->options([
+                                'None' => 'Engel Yok',
+                                'Mild' => 'Hafif',
+                                'Moderate' => 'Orta',
+                                'Severe' => 'Ağır'
+                            ]),
                     ])
                     ->collapsible()
                     ->collapsed(false)
@@ -122,16 +139,14 @@ class ApplicationsResource extends Resource
                     ->schema([
                         Forms\Components\TextInput::make('registered_province')
                             ->label('Nüfusa Kayıtlı İl')
+                            ->required()
                             ->placeholder('Nüfusa kayıtlı olduğunuz il')
                             ->maxLength(255),
                         Forms\Components\TextInput::make('registered_district')
                             ->label('Nüfusa Kayıtlı İlçe')
+                            ->required()
                             ->placeholder('Nüfusa kayıtlı olduğunuz ilçe')
                             ->maxLength(255),
-                        Forms\Components\Textarea::make('physical_disability')
-                            ->label('Fiziksel Engeliniz')
-                            ->placeholder('Fiziksel engeliniz varsa açıklayınız')
-                            ->columnSpanFull(),
                     ])
                     ->collapsible()
                     ->collapsed(true)
@@ -143,14 +158,17 @@ class ApplicationsResource extends Resource
                     ->schema([
                         Forms\Components\TextInput::make('school_name')
                             ->label('Okul Adı')
+                            ->required()
                             ->placeholder('Okuduğunuz okulun adı')
                             ->maxLength(255),
                         Forms\Components\TextInput::make('school_department')
                             ->label('Bölüm')
+                            ->required()
                             ->placeholder('Okuduğunuz bölüm')
                             ->maxLength(255),
                         Forms\Components\TextInput::make('grade')
                             ->label('Sınıf')
+                            ->required()
                             ->placeholder('Kaçıncı sınıfta olduğunuz')
                             ->maxLength(255),
                         Forms\Components\TextInput::make('enrollment_year')
@@ -388,7 +406,11 @@ class ApplicationsResource extends Resource
                             ->label('Öğrenim İlçesi')
                             ->placeholder('Öğrenim gördüğünüz ilçe')
                             ->maxLength(255),
-                    ]),
+                    ])
+                    ->collapsible()
+                    ->collapsed(true)
+                    ->columns(2)
+                    ->columnSpanFull(),
                 
                 // Financial Information / Mali Bilgiler
                 Forms\Components\Section::make('Mali Bilgiler')
@@ -519,6 +541,8 @@ class ApplicationsResource extends Resource
                     ->placeholder('Eklemek istediğiniz notlar')
                     ->columnSpanFull(),
             ])
+            ->collapsible()
+            ->collapsed(true)
             ->statePath('data')
             ->model(Applications::class);
     }

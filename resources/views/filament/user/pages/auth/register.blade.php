@@ -4,7 +4,7 @@
     <div class="flex items-center justify-center min-h-screen py-12">
         <div class="w-full max-w-2xl p-8 space-y-8">
             <div class="text-center space-y-2">
-                <img src="{{ asset('images/logo.png') }}" alt="Logo" class="bursiyer-logo mx-auto">
+                <!-- <img src="{{ asset('images/logo.png') }}" alt="Logo" class="bursiyer-logo mx-auto"> -->
                 
                 <h1 class="text-3xl font-bold text-indigo-700">
                     {{ $this->getHeading() }}

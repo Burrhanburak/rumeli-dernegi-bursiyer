@@ -48,6 +48,7 @@
                 <p class="text-gray-600">
                     {{ $this->getSubheading() }}
                 </p>
+             
             </div>
             
             <div class="bg-white rounded-xl p-8 shadow-2xl">

@@ -12,7 +12,7 @@ class UserDashboard extends Page
     protected static string $view = 'filament.user.pages.pages.user-dashboard';
 
     protected static ?string $slug = 'user-dashboard';
-    protected static ?string $title = 'Rumeli Türkleri Derneği';
+    protected static ?string $title = 'Anasayfa';
 
     protected function getHeaderWidgets(): array
     {

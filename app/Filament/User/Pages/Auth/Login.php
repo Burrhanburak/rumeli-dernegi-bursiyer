@@ -10,26 +10,44 @@ use Filament\Pages\Auth\Login as BaseLogin;
 use Filament\Actions\Action;
 use Filament\Support\Facades\FilamentView;
 use Illuminate\Contracts\Support\Htmlable;
+use DanHarrin\LivewireRateLimiting\Exceptions\TooManyRequestsException;
+use Illuminate\Support\Facades\Notification;
+use Illuminate\Validation\ValidationException;
+use Filament\Facades\Filament;
+use Filament\Http\Responses\Auth\LoginResponse;
+use Filament\Contracts\Auth\FilamentUser;
+use Filament\Notifications\Notification as FilamentNotification;
+
+
 class Login extends BaseLogin
 {
     // If you want to use a completely custom view
-    // protected static string $view = 'filament.user.pages.auth.login';
-    
-    public function getTitle(): string | Htmlable
+
+   
+    public function request(): void
     {
-        return __('Bursiyer Basvuru');
+        try {
+            $this->rateLimit(2);
+        } catch (TooManyRequestsException $exception) {
+            Notification::make()
+                ->title(__('filament-panels::pages/auth/login.notifications.throttled.title', [
+                    'seconds' => $exception->secondsUntilAvailable,
+                    'minutes' => ceil($exception->secondsUntilAvailable / 60),
+                ]))
+                ->body(array_key_exists('body', __('filament-panels::pages/auth/login.notifications.throttled') ?: []) ? __('filament-panels::pages/auth/login.notifications.throttled.body', [
+                    'seconds' => $exception->secondsUntilAvailable,
+                    'minutes' => ceil($exception->secondsUntilAvailable / 60),
+                ]) : null)
+                ->danger()
+                ->send();
+        }   
     }
-    
     public function getHeading(): string | Htmlable
     {
-        return __('Bursiyer Basvuru');
+        return __('Giriş Yapın');
     }
-    
-    public function getSubheading(): string | Htmlable | null
-    {
-        return __('Hesabınıza giriş yapın');
-    }
-    
+
+  
     public function form(Form $form): Form
     {
         return $form
@@ -45,12 +63,13 @@ class Login extends BaseLogin
     {
         return TextInput::make('email')
             ->label(__('Email'))
-            // ->icon('heroicon-o-at-symbol')
+            // ->suffixIcon('heroicon-o-at-symbol')
             ->placeholder('E-posta adresinizi giriniz')
             ->email()
             ->required()
             ->autocomplete('username')
             ->autofocus();
+          
     }
     
     protected function getPasswordFormComponent(): Component
@@ -58,6 +77,7 @@ class Login extends BaseLogin
         return TextInput::make('password')
             ->label(__('Şifre'))
             // ->icon('heroicon-o-lock-closed')
+            ->revealable()
             ->placeholder('Şifrenizi giriniz')
             ->password()
             ->required()
@@ -115,4 +135,62 @@ class Login extends BaseLogin
             ->icon('heroicon-o-question-mark-circle')
             ->url($this->getForgotPasswordUrl());
     }
+
+    protected function getCredentialsFromFormData(array $data): array
+    {
+        return [
+            'email' => $data['email'],
+            'password' => $data['password'],
+        ];
+    }
+
+    public function authenticate(): ?LoginResponse
+    {
+        try {
+            $this->rateLimit(5);
+        } catch (TooManyRequestsException $exception) {
+            $this->getRateLimitedNotification($exception)?->send();
+
+            return null;
+        }
+
+        $data = $this->form->getState();
+
+        if (! Filament::auth()->attempt($this->getCredentialsFromFormData($data), $data['remember'] ?? false)) {
+            $this->throwFailureValidationException();
+        }
+
+        $user = Filament::auth()->user();
+
+        if (
+            ($user instanceof FilamentUser) &&
+            (! $user->canAccessPanel(Filament::getCurrentPanel()))
+        ) {
+            Filament::auth()->logout();
+
+            $this->throwFailureValidationException();
+        }
+
+        session()->regenerate();
+
+        return app(LoginResponse::class);
+    }
+
+    protected function getRateLimitedNotification(TooManyRequestsException $exception): ?FilamentNotification
+    {
+        return FilamentNotification::make()
+            ->title(__('Çok fazla giriş denemesi'))
+            ->body(__('Lütfen :seconds saniye sonra tekrar deneyin.', [
+                'seconds' => $exception->secondsUntilAvailable,
+            ]))
+            ->danger();
+    }
+
+    protected function throwFailureValidationException(): never
+    {
+        throw ValidationException::withMessages([
+            'data.email' => __('Bu bilgiler kayıtlarımızla eşleşmiyor.'),
+        ]);
+    }
+
 }

@@ -81,8 +81,9 @@ class ProfileResource extends Resource
             ->validationMessages([
                 'unique' => 'Bu telefon numarası zaten kayıtlı.'
             ]),
-                        Forms\Components\DatePicker::make('dogum_tarihi')
+                        Forms\Components\DatePicker::make('birth_date')
                             ->label('Doğum Tarihi')
+                            ->displayFormat('d/m/Y')
                             ->placeholder('Doğum tarihinizi giriniz')
                             ->maxDate(now()->subYears(17)),
                         Forms\Components\FileUpload::make('image')
@@ -111,11 +112,11 @@ class ProfileResource extends Resource
                             ->placeholder('Adresinizi giriniz')
                             ->maxLength(255)
                             ->columnSpanFull(),
-                        Forms\Components\TextInput::make('sehir')
+                        Forms\Components\TextInput::make('city')
                             ->label('Şehir')
                             ->placeholder('Şehirinizi giriniz')
                             ->maxLength(100),
-                        Forms\Components\TextInput::make('postal_kodu')
+                        Forms\Components\TextInput::make('postal_code')
                             ->label('Posta Kodu')
                             ->placeholder('Posta kodunuzu giriniz')
                             ->maxLength(20),
@@ -166,9 +167,9 @@ class ProfileResource extends Resource
                 Tables\Columns\TextColumn::make('phone')
                     ->label('Telefon')
                     ->searchable(),
-                Tables\Columns\TextColumn::make('dogum_tarihi')
+                Tables\Columns\TextColumn::make('birth_date')
                     ->label('Doğum Tarihi')
-                    ->date()
+                    ->date('d/m/Y')
                     ->sortable(),
             ])
             ->actions([

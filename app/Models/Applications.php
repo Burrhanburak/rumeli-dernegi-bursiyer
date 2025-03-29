@@ -53,12 +53,14 @@ class Applications extends Model
         'father_birth_place',       // baba_dogum_yeri
         'father_occupation',        // baba_meslegi
         'father_death_year',        // baba_vefat_yili
+        'father_monthly_income',    // baba_aylik_net_gelir
         'mother_name',              // anne_adi
         'mother_surname',           // anne_soyadi
         'mother_birth_year',        // anne_dogum_yili
         'mother_birth_place',       // anne_dogum_yeri
         'mother_occupation',        // anne_meslegi
         'mother_death_year',        // anne_vefat_yili
+        'mother_monthly_income',    // anne_aylik_net_gelir
         // Sibling Information
         'sibling1_name',            // kardes1_adi
         'sibling1_surname',         // kardes1_soyadi
@@ -80,6 +82,7 @@ class Applications extends Model
         'sibling5_surname',         // kardes5_soyadi
         'sibling5_age',             // kardes5_yasi
         'sibling5_education',       // kardes5_ogrenim_durumu
+        'sibling_monthly_income',   // kardes_aylik_net_gelir
         // Residence Information
         'family_head_dependent_count', // aile_reisinin_baktigi_fert_sayisi
         'family_subsistence_responsibility', // ailenin_geçim_sorumlulugu
@@ -93,11 +96,6 @@ class Applications extends Model
         'education_province',       // ogrenim_ili
         'education_district',       // ogrenim_ilcesi
         // Financial Information
-        'father_monthly_income',    // baba_aylik_net_gelir
-        'mother_monthly_income',    // anne_aylik_net_gelir
-        'sibling_monthly_income',   // kardes_aylik_net_gelir
-        'spouse_monthly_income',    // es_aylik_net_gelir
-        'death_benefit_annual_income', // vefat_ile_bagli_maas_yillik_net_gelir
         'family_owns_house',        // ailenin_evi_var_mi
         'rent_payment_amount',      // kirada_oturuyor_ise_kira_miktari
         'real_estate_value_and_income', // gayrimenkul_degeri_ve_geliri
@@ -127,6 +125,19 @@ class Applications extends Model
         'postal_code',           // Add this field
         'disability_description', // Add this field
         'disability_status',     // Add this field
+        'pre_approved_by',
+        'pre_approved_at',
+        'rejected_by',
+        'rejected_at',
+        'document_reviewed_by',
+        'document_reviewed_at',
+        'interview_pool_by',
+        'interview_pool_at',
+        'accepted_by',
+        'accepted_at',
+        'final_acceptance_by',
+        'final_acceptance_at',
+        'rejection_reason'
     ];
     
     // Specify which attributes cannot be mass assigned

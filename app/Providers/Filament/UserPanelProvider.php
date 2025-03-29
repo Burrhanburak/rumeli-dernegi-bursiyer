@@ -25,41 +25,43 @@ use Filament\Enums\ThemeMode;
 use App\Http\Middleware\RedirectToProperPanelMiddleware;
 use App\Filament\User\Pages\Pages\UserDashboard;
 use App\Filament\User\Widgets\StatsOverview;    
+use App\Filament\User\Pages\Auth\RequestPasswordReset;
+use App\Filament\User\Pages\Auth\EmailVerificationPrompt;
+use App\Filament\Pages\Settings;
+use Filament\Navigation\MenuItem;
 
 class UserPanelProvider extends PanelProvider
 {
     public function panel(Panel $panel): Panel
-
     {
         return $panel
             ->default()
             ->id('user')
             ->path('user')
+            // ->topNavigation()
+            // ->collapsedSidebarWidth('9rem')
+            // ->sidebarCollapsibleOnDesktop()
+          
+         
             ->login(BaseLogin::class)
             ->profile()
-           
             ->defaultThemeMode(ThemeMode::Light)
-            ->brandName('Rumeli Türkleri Derneği')
-            
+            // ->brandName('')
             ->registration(Register::class)
-            ->brandLogo(asset('images/logo.svg'))
+            // ->brandLogo(asset('images/logo.svg'))
             ->passwordResetRoutePrefix('password-reset')
-            ->passwordReset()
-
-            ->emailVerification()
+            ->passwordReset(RequestPasswordReset::class)
+            ->emailVerification(EmailVerificationPrompt::class)
             ->colors([
                 'primary' => Color::Emerald,
             ])
             ->discoverResources(in: app_path('Filament/User/Resources'), for: 'App\\Filament\\User\\Resources')
             ->discoverPages(in: app_path('Filament/User/Pages'), for: 'App\\Filament\\User\\Pages')
             ->pages([
-                // Pages\Dashboard::class
-               UserDashboard::class,
+                UserDashboard::class,
             ])
             ->discoverWidgets(in: app_path('Filament/User/Widgets'), for: 'App\\Filament\\User\\Widgets')
             ->widgets([
-                // Widgets\AccountWidget::class,
-                // Widgets\FilamentInfoWidget::class,
                 StatsOverview::class,             
             ])
             ->middleware([
@@ -74,12 +76,9 @@ class UserPanelProvider extends PanelProvider
                 DispatchServingFilamentEvent::class,
             ])
             ->authMiddleware([
-                // RedirectToProperPanelMiddleware::class,
                 Authenticate::class,
-                
             ])
             ->authGuard('web');
-
-        
+           
     }
 }

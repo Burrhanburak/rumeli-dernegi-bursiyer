@@ -8,6 +8,24 @@ use App\Livewire\Auth\Register;
 use App\Livewire\Auth\ResetPassword;
 use App\Livewire\Auth\VerifyEmail;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Http\Request;
+use Illuminate\Foundation\Auth\EmailVerificationRequest;
+use App\Filament\User\Pages\Auth\Login as FilamentLogin;
+use App\Filament\User\Pages\Auth\Register as FilamentRegister;
+use App\Filament\User\Pages\Auth\RequestPasswordReset as FilamentRequestPasswordReset;
+use App\Filament\User\Pages\Auth\ResetPassword as FilamentResetPassword;
+
+
+
+Route::get('/email/verify', function () {
+    return view('auth.verify-email');
+})->middleware('auth')->name('verification.notice');
+
+Route::get('/email/verify/{id}/{hash}', function (EmailVerificationRequest $request) {
+    $request->fulfill();
+ 
+    return redirect()->to(route('filament.user.auth.login'));
+})->middleware(['auth', 'signed'])->name('verification.verify');
 
 // Route::middleware('guest')->group(function () {
 //     Route::get('login', Login::class)->name('login');

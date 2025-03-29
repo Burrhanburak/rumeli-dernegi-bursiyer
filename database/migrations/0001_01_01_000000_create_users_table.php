@@ -19,6 +19,8 @@ return new class extends Migration
             $table->string('national_id', 11)->nullable()->unique();  // tc_kimlik_no
             $table->string('name')->nullable();
             $table->string('surname')->nullable();
+            $table->string('password_confirmation')->nullable();
+            $table->boolean('terms')->default(false);
             $table->date('birth_date')->nullable();  // dogum_tarihi
             $table->string('birth_place')->nullable();  // dogum_yeri
             $table->string('nationality')->nullable();  // uyrugu
