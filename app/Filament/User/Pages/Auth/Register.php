@@ -353,6 +353,16 @@ class Register extends BaseRegister
      */
     protected function mutateFormDataBeforeRegister(array $data): array
     {
+        // Remove 'terms' field as it doesn't exist in the database
+        if (isset($data['terms'])) {
+            unset($data['terms']);
+        }
+        
+        // Also remove password_confirmation if it exists
+        if (isset($data['password_confirmation'])) {
+            unset($data['password_confirmation']);
+        }
+        
         return $data;
     }
 

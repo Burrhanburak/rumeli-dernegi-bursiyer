@@ -42,7 +42,6 @@ class User extends Authenticatable implements FilamentUser, HasAvatar ,MustVerif
         'email',
         'address',
         'password_confirmation',
-        'terms',
         'city', // sehir
         'postal_code', // posta_kodu
         'physical_disability', // beden_ozru
@@ -130,6 +129,7 @@ class User extends Authenticatable implements FilamentUser, HasAvatar ,MustVerif
         'image',
         'status',
         'iban',
+        'terms',
         'is_active',
         'password',
         'email_verified_at',
