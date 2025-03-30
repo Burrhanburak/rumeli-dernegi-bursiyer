@@ -22,12 +22,14 @@ class SendEmailVerificationNotification
     /**
      * Handle the event.
      */
-    public function handle(object $event): void
+    public function handle(Registered $event): void
     {
         if ($event->user instanceof MustVerifyEmail && ! $event->user->hasVerifiedEmail()) {
-            // @TODO Get the user's preferred locale
-            $locale = app()->getLocale();
+            // Set locale to Turkish for consistent language in emails
+            $locale = 'tr';
+            app()->setLocale($locale);
 
+            // Create and send notification
             $notification = new VerifyTestNotification($locale);
             $notification->url = Filament::getVerifyEmailUrl($event->user);
 

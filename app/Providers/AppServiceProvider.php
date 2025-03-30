@@ -8,13 +8,10 @@ use Illuminate\Support\ServiceProvider;
 use Filament\Support\Facades\FilamentLabel;
 use Illuminate\Support\Facades\URL;
 use App\Listeners\SendEmailVerificationNotification;
-
+use Illuminate\Auth\Events\Registered;
 
 class AppServiceProvider extends ServiceProvider
 {
-
-
-    
     /**
      * Register any application services.
      */
@@ -32,6 +29,12 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Register the event listener explicitly
+        $this->app['events']->listen(
+            Registered::class,
+            \App\Listeners\SendEmailVerificationNotification::class
+        );
+
         // Özel boş tablo başlığı ve açıklaması
         Table::configureUsing(function (Table $table): void {
             $table->emptyStateHeading('Başvuru Bulunamadı')
@@ -48,5 +51,4 @@ class AppServiceProvider extends ServiceProvider
         // \Filament\Http\Responses\Auth\Contracts\LoginResponse::class => \App\Http\Response\Auth\Contracts\LoginResponse::class,
         // \Filament\Http\Responses\Auth\Contracts\LogoutResponse::class => \App\Http\Response\Auth\Contracts\LogoutResponse::class,
     ];
-
 }
