@@ -83,7 +83,11 @@ class DocumentUploadResource extends Resource
                         Forms\Components\FileUpload::make('file_path')
                             ->label('Dosya')
                             ->required()
-                            ->acceptedFileTypes(['application/pdf', 'image/jpeg', 'image/png', 'image/gif'])
+                            ->reactive()
+                            ->uploadingMessage('Yükleniyor...')
+                            ->placeholder('Dosyayı sürükleyin veya yükleyin')
+                            ->acceptedFileTypes(['application/pdf', 'image/jpeg', 'image/png'])
+                            ->helperText('Yalnızca PDF, JPEG, PNG formatındaki dosyaları yükleyebilirsiniz.')
                             ->disk('public')
                             ->directory('documents')
                             ->visibility('public')
@@ -98,7 +102,7 @@ class DocumentUploadResource extends Resource
                             ->label('Açıklama')
                             ->maxLength(65535),
                         Forms\Components\Hidden::make('status')
-                            ->default('beklemede'),
+                            ->default('pending'),
                     ])->columns(2),
             ]);
     }
@@ -137,10 +141,16 @@ class DocumentUploadResource extends Resource
                     ->label('Durum')
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
-                        'beklemede' => 'warning',
-                        'onaylandi' => 'success',
-                        'reddedildi' => 'danger',
+                        'pending' => 'warning',
+                        'approved' => 'success',
+                        'rejected' => 'danger',
                         default => 'warning',
+                    })
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                        'pending' => 'Beklemede',
+                        'approved' => 'Onaylandı',
+                        'rejected' => 'Reddedildi',
+                        default => 'Beklemede',
                     })
                     ->sortable(),
                 // Tables\Columns\TextColumn::make('application.program.name')

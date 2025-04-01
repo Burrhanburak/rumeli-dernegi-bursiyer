@@ -91,4 +91,7 @@ return [
     'Delete' => 'Sil',
     'Edit' => 'Düzenle',
     'View' => 'Görüntüle',
+
+    
+    
 ]; 

@@ -13,6 +13,10 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\Facades\Hash;
+use Ysfkaya\FilamentPhoneInput\Forms\PhoneInput;
+use Ysfkaya\FilamentPhoneInput\Tables\PhoneColumn;
+use Ysfkaya\FilamentPhoneInput\Infolists\PhoneEntry;
+use Ysfkaya\FilamentPhoneInput\PhoneInputNumberType;
 
 class UserResource extends Resource
 {
@@ -65,18 +69,26 @@ class UserResource extends Resource
                             ->helperText('Kullanıcıya yönetici yetkisi verir')
                             ->onColor('success')
                             ->offColor('danger'),
-                        Forms\Components\TextInput::make('phone')
-                            ->label('Telefon')
-                            ->tel()
-                            ->placeholder('Örnek: 0555 555 55 55')
-                            ->telRegex('/^[+]*[(]{0,1}[0-9]{1,4}[)]{0,1}[-\s\.\/0-9]*$/')
-                            ->maxLength(20),
+                            PhoneInput::make('phone')
+                            ->defaultCountry('tr')
+                            ->initialCountry('tr')
+                            ->placeholder('Telefon numaranızı giriniz')
+                            ->locale('tr')
+                            ->countrySearch(false)
+                            ->label('Telefon Numarası')
+                            ->required()
+                            ->unique(User::class, ignoreRecord: true)
+                            ->validationMessages([
+                                'unique' => 'Bu telefon numarası zaten kayıtlı.'
+                            ]),
                         Forms\Components\TextInput::make('address')
                             ->label('Adres')
                             ->placeholder('Adresinizi girin')
                             ->maxLength(255),
-                        Forms\Components\DatePicker::make('birth_date')
-                            ->label('Doğum Tarihi'),
+                            Forms\Components\DatePicker::make('birth_date')
+                            ->native(false)
+                            ->displayFormat('d/m/Y')
+                            ->placeholder('Doğum Tarihiniz'),
                         Forms\Components\FileUpload::make('image')
                             ->label('Profil Fotoğrafı')
                             ->image()

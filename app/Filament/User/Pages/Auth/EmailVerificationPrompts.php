@@ -6,20 +6,23 @@ use DanHarrin\LivewireRateLimiting\Exceptions\TooManyRequestsException;
 use DanHarrin\LivewireRateLimiting\WithRateLimiting;
 use Filament\Facades\Filament;
 use Filament\Notifications\Notification;
-use Filament\Pages\Auth\EmailVerification\EmailVerificationPrompt as BaseVerifyEmail;
 use Illuminate\Contracts\Support\Htmlable;
 use Exception;
 use Filament\Actions\Action;
 use Filament\Forms\Form;
 use Filament\Notifications\Auth\VerifyEmail;
+use Filament\Pages\Auth\EmailVerification\EmailVerificationPrompt;
 
 use Filament\Pages\SimplePage;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 
 
 
-class EmailVerificationPrompt extends BaseVerifyEmail
+class EmailVerificationPrompts extends EmailVerificationPrompt
 {
+
+    protected bool $hasTopBar = false;
+
     protected static string $view = 'filament.user.pages.auth.verify-email';
 
 
@@ -114,13 +117,20 @@ class EmailVerificationPrompt extends BaseVerifyEmail
 
     public function resendNotification()
     {
+        try {
+            $this->rateLimit(2);
+        } catch (TooManyRequestsException $exception) {
+            $this->getRateLimitedNotification($exception)?->send();
+            return null;
+        }
+
         $user = auth()->user();
 
         if ($user->hasVerifiedEmail()) {
             return redirect()->intended(Filament::getUrl());
         }
 
-        $user->sendEmailVerificationNotification();
+        $this->sendEmailVerificationNotification($user);
 
         Notification::make()
             ->title(__('Doğrulama e-postası gönderildi!'))

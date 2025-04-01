@@ -21,9 +21,17 @@ class SendEmailVerificationNotification
 
     /**
      * Handle the event.
+     * 
+     * DISABLED: We're now handling this directly in the User model
+     * to prevent duplicate emails.
      */
     public function handle(Registered $event): void
     {
+        // This method is disabled because we're now handling email verification 
+        // directly in the User model's sendEmailVerificationNotification method
+        // Keeping this file for reference
+        return;
+        
         if ($event->user instanceof MustVerifyEmail && ! $event->user->hasVerifiedEmail()) {
             // Set locale to Turkish for consistent language in emails
             $locale = 'tr';

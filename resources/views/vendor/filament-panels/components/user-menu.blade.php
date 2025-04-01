@@ -86,12 +86,13 @@
 
         <x-filament::dropdown.list.item
             :action="$logoutItem?->getUrl() ?? filament()->getLogoutUrl()"
-            :color="$logoutItem?->getColor()"
+            :color="$logoutItem?->getColor() ?? 'danger'"
             :icon="$logoutItem?->getIcon() ?? \Filament\Support\Facades\FilamentIcon::resolve('panels::user-menu.logout-button') ?? 'heroicon-m-arrow-left-on-rectangle'"
             method="post"
             tag="form"
+            class="hover:bg-danger-500 hover:text-white transition-colors duration-200"
         >
-            {{ $logoutItem?->getLabel() ?? __('filament-panels::layout.actions.logout.label') }}
+            Çıkış Yap
         </x-filament::dropdown.list.item>
     </x-filament::dropdown.list>
 </x-filament::dropdown>

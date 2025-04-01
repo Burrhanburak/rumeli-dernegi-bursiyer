@@ -83,8 +83,6 @@ class CreateApplications extends CreateRecord
             }),
             'all_data' => $data,
         ]);
-
-        dd($data);
         
         return $data;
     }
@@ -316,5 +314,21 @@ class CreateApplications extends CreateRecord
         return $redirectUrl;
     }
 
+    protected function getCreateFormAction(): Actions\Action
+    {
+        return parent::getCreateFormAction()
+            ->label('Oluştur');
+    }
 
+    protected function getCreateAnotherFormAction(): Actions\Action
+    {
+        return parent::getCreateAnotherFormAction()
+            ->label('Oluştur ve başka ekle');
+    }
+
+    protected function getCancelFormAction(): Actions\Action
+    {
+        return parent::getCancelFormAction()
+            ->label('İptal');
+    }
 }

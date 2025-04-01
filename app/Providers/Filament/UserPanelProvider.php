@@ -26,10 +26,9 @@ use App\Http\Middleware\RedirectToProperPanelMiddleware;
 use App\Filament\User\Pages\Pages\UserDashboard;
 use App\Filament\User\Widgets\StatsOverview;    
 use App\Filament\User\Pages\Auth\RequestPasswordReset;
-use App\Filament\User\Pages\Auth\EmailVerificationPrompt;
-use App\Filament\Pages\Settings;
-use Filament\Navigation\MenuItem;
+use App\Filament\User\Pages\Auth\EmailVerificationPrompts;
 
+use Filament\Navigation\MenuItem;
 class UserPanelProvider extends PanelProvider
 {
     public function panel(Panel $panel): Panel
@@ -42,18 +41,47 @@ class UserPanelProvider extends PanelProvider
             // ->collapsedSidebarWidth('9rem')
             // ->sidebarCollapsibleOnDesktop()
           
-         
+            ->userMenuItems([
+                
+                MenuItem::make()
+                    ->label('Profilim')
+                    ->url('/user/profiles')
+                    ->icon('heroicon-o-cog-6-tooth'),
+                // ...
+                // MenuItem::make()
+                // ->label('Çıkış Yap')
+                // ->url(fn () => route('filament.user.auth.logout'))
+                // ->icon('heroicon-o-arrow-right-on-rectangle')
+                // ->color('danger'),
+                // MenuItem::make()
+                //     ->label('Çıkış')
+                //     ->url('/logout')
+                //     ->icon('heroicon-o-arrow-right-on-rectangle')
+                //     ->color('danger'),
+                
+              
+            ])
             ->login(BaseLogin::class)
-            ->profile()
+            // ->profile()
             ->defaultThemeMode(ThemeMode::Light)
             // ->brandName('')
             ->registration(Register::class)
             // ->brandLogo(asset('images/logo.svg'))
             ->passwordResetRoutePrefix('password-reset')
             ->passwordReset(RequestPasswordReset::class)
-            ->emailVerification(EmailVerificationPrompt::class)
+            ->emailVerification(EmailVerificationPrompts::class)
             ->colors([
                 'primary' => Color::Emerald,
+                'secondary' => Color::Amber,
+                'accent' => Color::Indigo,
+                'danger' => Color::Rose,
+                'warning' => Color::Amber,
+                'success' => Color::Emerald,
+                'info' => Color::Sky,
+                'light' => Color::Gray,
+                'dark' => Color::Slate,
+                'muted' => Color::Zinc,
+               
             ])
             ->discoverResources(in: app_path('Filament/User/Resources'), for: 'App\\Filament\\User\\Resources')
             ->discoverPages(in: app_path('Filament/User/Pages'), for: 'App\\Filament\\User\\Pages')

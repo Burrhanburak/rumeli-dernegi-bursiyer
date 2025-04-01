@@ -283,4 +283,27 @@ class User extends Authenticatable implements FilamentUser, HasAvatar ,MustVerif
 
     return true;
     }
+    
+    /**
+     * Override the default verification notification to use our custom Turkish notification
+     */
+    public function sendEmailVerificationNotification(): void
+    {
+        // Skip if already verified
+        if ($this->hasVerifiedEmail()) {
+            return;
+        }
+        
+        // Set locale to Turkish
+        app()->setLocale('tr');
+        
+        // Log for debugging purposes
+        \Illuminate\Support\Facades\Log::info('Sending verification email to: ' . $this->email);
+        
+        // Create and send notification
+        $notification = app(\App\Notifications\VerifyTestNotification::class, ['token' => '']);
+        $notification->url = \Filament\Facades\Filament::getVerifyEmailUrl($this);
+        
+        $this->notify($notification);
+    }
 }

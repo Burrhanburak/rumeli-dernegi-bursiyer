@@ -17,11 +17,13 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        // Use your custom listener instead
+        // We no longer need this binding since we're overriding the method in the User model
         $this->app->bind(
             \Illuminate\Auth\Listeners\SendEmailVerificationNotification::class,
             \App\Listeners\SendEmailVerificationNotification::class
         );
+        
+       
     }
 
     /**
@@ -29,12 +31,6 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // Register the event listener explicitly
-        $this->app['events']->listen(
-            Registered::class,
-            \App\Listeners\SendEmailVerificationNotification::class
-        );
-
         // Özel boş tablo başlığı ve açıklaması
         Table::configureUsing(function (Table $table): void {
             $table->emptyStateHeading('Başvuru Bulunamadı')

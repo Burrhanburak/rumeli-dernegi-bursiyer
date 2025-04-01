@@ -77,15 +77,15 @@ class ProfileResource extends Resource
             ->countrySearch(false)
             ->label('Telefon Numarası')
             ->required()
-            ->unique(User::class)
+            ->unique(User::class, ignoreRecord: true)
             ->validationMessages([
                 'unique' => 'Bu telefon numarası zaten kayıtlı.'
             ]),
                         Forms\Components\DatePicker::make('birth_date')
-                            ->label('Doğum Tarihi')
+                           
+                            ->native(false)
                             ->displayFormat('d/m/Y')
-                            ->placeholder('Doğum tarihinizi giriniz')
-                            ->maxDate(now()->subYears(17)),
+                            ->placeholder('Doğum Tarihiniz'),
                         Forms\Components\FileUpload::make('image')
                             ->label('Profil Fotoğrafı')
                             ->image()
@@ -99,9 +99,14 @@ class ProfileResource extends Resource
                             ->circleCropper()
                             ->openable()
                             ->reorderable(false)
-                            ->avatar()
+                            ->avatar(),
                             
-                           
+                            Forms\Components\TextInput::make('national_id')
+                            ->label('T.C. Kimlik No')
+                            ->placeholder('T.C. Kimlik Numaranız')
+                            ->required()
+                            ->numeric()
+                            ->length(11),
                       
                     ])->columns(2),
                 

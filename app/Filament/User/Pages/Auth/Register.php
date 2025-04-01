@@ -197,8 +197,11 @@ class Register extends BaseRegister
     {
         return DatePicker::make('birth_date')
             ->label('Doğum Tarihi')
+            ->native(false)
+            ->locale('tr')
+            ->displayFormat('d/m/Y')
             ->required()
-            ->maxDate(now()->subYears(18))
+            ->placeholder('Doğum tarihinizi giriniz')
             ->validationMessages([
                 'max' => '18 yaşından küçükler kayıt olamaz.'
             ]);
@@ -294,7 +297,12 @@ class Register extends BaseRegister
 
         event(new Registered($user));
 
-        $this->sendEmailVerificationNotification($user);
+        // E-posta doğrulama bildirimini gönder
+        if ($user instanceof MustVerifyEmail && ! $user->hasVerifiedEmail()) {
+            $notification = app(VerifyTestNotification::class, ['token' => '']);
+            $notification->url = Filament::getVerifyEmailUrl($user);
+            $user->notify($notification);
+        }
 
         Filament::auth()->login($user);
 

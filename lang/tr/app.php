@@ -15,4 +15,11 @@ return [
             'plural_label' => 'Başvurular',
         ],
     ],
+    'layout' => [
+        'actions' => [
+            'logout' => [
+                'label' => 'Çıkış Yap',
+            ],
+        ],
+    ],
 ]; 
