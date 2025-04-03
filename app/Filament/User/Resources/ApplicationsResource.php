@@ -155,9 +155,7 @@ Forms\Components\Section::make('Kişisel Bilgiler')
             ->label('Telefon Numarası')
             ->required()
             ->unique(table: 'users', column: 'phone', ignorable: $this->record) // 
-            ->default(Auth::user()->phone)
-           
-         
+            ->default(Auth::user()->phone),
                 
             Forms\Components\TextInput::make('email')
                 ->label('E-posta')
