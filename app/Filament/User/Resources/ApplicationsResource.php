@@ -155,7 +155,14 @@ Forms\Components\Section::make('Kişisel Bilgiler')
             ->label('Telefon Numarası')
             ->required()
             ->unique(ignoreRecord: true, column: 'phone')
-            ->default(Auth::user()->phone),
+            ->default(Auth::user()->phone)
+            ->dehydrateStateUsing(function ($state) {
+                // If phone hasn't changed, return the original value
+                if (empty($state)) {
+                    return Auth::user()->phone;
+                }
+                return $state;
+            }),
          
                 
             Forms\Components\TextInput::make('email')
