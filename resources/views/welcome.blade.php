@@ -181,7 +181,7 @@
                         <div class="flex items-center gap-4">
                             <div class="flex gap-2">
                                 @auth
-                                    <a href="{{ url('/dashboard') }}" class="btn btn-outline">
+                                    <a href="{{ url('user/dashboard') }}" class="btn btn-outline">
                                         Dashboard
                                     </a>
                                 @else

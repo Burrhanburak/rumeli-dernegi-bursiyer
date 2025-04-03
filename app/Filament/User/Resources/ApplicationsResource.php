@@ -154,7 +154,7 @@ Forms\Components\Section::make('Kişisel Bilgiler')
             ->countrySearch(false)
             ->label('Telefon Numarası')
             ->required()
-            ->unique(table: 'users', column: 'phone', ignorable: $this->record) // 
+            ->unique(table: 'users', column: 'phone', ignorable: fn ($livewire) => $livewire->record) // 
             ->default(Auth::user()->phone),
                 
             Forms\Components\TextInput::make('email')
