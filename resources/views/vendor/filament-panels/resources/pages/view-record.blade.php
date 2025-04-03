@@ -1,23 +1,23 @@
 <x-filament-panels::page
     @class([
         'fi-resource-view-record-page',
-        'fi-resource-' . str_replace('/', '-', $livewire->getResource()::getSlug()),
+        'fi-resource-' . str_replace('/', '-', $this->getResource()::getSlug()),
         'fi-resource-record-' . $record->getKey(),
     ])
 >
     @php
-        $relationManagers = $livewire->getRelationManagers();
-        $hasCombinedRelationManagerTabsWithContent = $livewire->hasCombinedRelationManagerTabsWithContent();
+        $relationManagers = $this->getRelationManagers();
+        $hasCombinedRelationManagerTabsWithContent = $this->hasCombinedRelationManagerTabsWithContent();
     @endphp
 
     @if ((! $hasCombinedRelationManagerTabsWithContent) || (! count($relationManagers)))
-        @if ($livewire->hasInfolist())
-            {{ $livewire->infolist }}
+        @if ($this->hasInfolist())
+            {{ $this->infolist }}
         @else
             <div
-                wire:key="{{ $livewire->getId() }}.forms.{{ $livewire->getFormStatePath() }}"
+                wire:key="{{ $this->getId() }}.forms.{{ $this->getFormStatePath() }}"
             >
-                {{ $livewire->form }}
+                {{ $this->form }}
             </div>
         @endif
     @endif
@@ -25,20 +25,20 @@
     @if (count($relationManagers))
         <x-filament-panels::resources.relation-managers
             :active-locale="isset($activeLocale) ? $activeLocale : null"
-            :active-manager="$livewire->activeRelationManager ?? ($hasCombinedRelationManagerTabsWithContent ? null : array_key_first($relationManagers))"
-            :content-tab-label="$livewire->getContentTabLabel()"
-            :content-tab-icon="$livewire->getContentTabIcon()"
-            :content-tab-position="$livewire->getContentTabPosition()"
+            :active-manager="$this->activeRelationManager ?? ($hasCombinedRelationManagerTabsWithContent ? null : array_key_first($relationManagers))"
+            :content-tab-label="$this->getContentTabLabel()"
+            :content-tab-icon="$this->getContentTabIcon()"
+            :content-tab-position="$this->getContentTabPosition()"
             :managers="$relationManagers"
             :owner-record="$record"
             :page-class="static::class"
         >
             @if ($hasCombinedRelationManagerTabsWithContent)
                 <x-slot name="content">
-                    @if ($livewire->hasInfolist())
-                        {{ $livewire->infolist }}
+                    @if ($this->hasInfolist())
+                        {{ $this->infolist }}
                     @else
-                        {{ $livewire->form }}
+                        {{ $this->form }}
                     @endif
                 </x-slot>
             @endif
