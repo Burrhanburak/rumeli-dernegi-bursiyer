@@ -124,8 +124,11 @@ return new class extends Migration
             ])->nullable();
             $table->string('iban')->nullable();
             $table->boolean('is_active')->default(true);
+            $table->string('otp_code')->nullable();
+            $table->timestamp('otp_expires_at')->nullable();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
+            
             $table->rememberToken();
             $table->timestamps();
        

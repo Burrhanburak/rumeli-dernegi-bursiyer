@@ -28,4 +28,13 @@ class ViewApplications extends ViewRecord
         ];
     }
     
+    protected function getDeleteFormActions(): array
+    {
+        return [
+            Actions\Action::make('delete')
+                ->label('Sil')
+                ->color('danger'),
+        ];
+    }
+    
 }

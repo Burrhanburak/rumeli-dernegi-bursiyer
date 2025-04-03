@@ -22,6 +22,8 @@ use App\Filament\Pages\AdminDashboard;
 use Filament\Enums\ThemeMode;
 use App\Filament\Widgets\AplicationsChart;
 use App\Filament\Pages\Auth\Login as AdminLogin;
+use Filament\Navigation\NavigationItem;
+
 class AdminPanelProvider extends PanelProvider
 {
     public function panel(Panel $panel): Panel
@@ -30,29 +32,42 @@ class AdminPanelProvider extends PanelProvider
             ->default()
             ->id('admin')
             ->path('admin')
+            
             ->login(AdminLogin::class)
+
             ->brandName('Admin Panel')
             // ->brandLogo(asset('images/logo.svg'))
             ->favicon(asset('images/favicon.ico'))
             ->colors([
                 'primary' => Color::Blue,
                 'background' => Color::Blue,
+                'danger' => Color::Rose,
+                'gray' => Color::Gray,
+                'info' => Color::Blue,
+              
+                'success' => Color::Emerald,
+                'warning' => Color::Orange,
                
             ])
-            
+            ->defaultThemeMode(ThemeMode::Light)
             // ->defaultThemeMode(ThemeMode::Light)
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
             ->pages([
-       
                 // Pages\Dashboard::class,
+                
                 AdminDashboard::class,
+            ])
+            ->navigationGroups([
+                'Başvuru İşlemleri',
+                'Belge Yönetimi',
+                'Burs Yönetimi',
+                'Sistem',
             ])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
             ->widgets([
                 Widgets\AccountWidget::class,
-                AplicationsChart::class,
-                // Widgets\FilamentInfoWidget::class,
+                Widgets\FilamentInfoWidget::class,
             ])
             ->middleware([
                 EncryptCookies::class,
@@ -66,10 +81,12 @@ class AdminPanelProvider extends PanelProvider
                 DispatchServingFilamentEvent::class,
             ])
             ->authMiddleware([
-                 \App\Http\Middleware\RedirectToProperPanelMiddleware::class,
-                Authenticate::class,
+                \App\Http\Middleware\CustomFilamentAuthenticate::class,
             ])
-            ->authGuard('web');
+            ->authGuard('web')
+            ->globalSearchKeyBindings(['command+k', 'ctrl+k'])
+            ->sidebarCollapsibleOnDesktop()
+            ->maxContentWidth('full');
             
            
     }

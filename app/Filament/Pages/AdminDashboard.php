@@ -37,7 +37,7 @@ class AdminDashboard extends Page
     protected function getFooterWidgets(): array
     {
         return [
-            BasvuruDagilimGrafigi::class,
+            // BasvuruDagilimGrafigi::class,
          
         ];
     }

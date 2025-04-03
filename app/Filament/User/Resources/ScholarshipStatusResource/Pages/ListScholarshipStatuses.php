@@ -24,4 +24,5 @@ class ListScholarshipStatuses extends ListRecords
     protected static ?string $breadcrumb = 'Burs Durumum';
 
     
+    
 }

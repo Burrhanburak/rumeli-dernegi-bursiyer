@@ -5,6 +5,7 @@ namespace App\Filament\Resources\ApplicationsResource\Pages;
 use App\Filament\Resources\ApplicationsResource;
 use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
+use Filament\Resources\Pages\ListRecords\Tab;
 
 class ListApplications extends ListRecords
 {
@@ -30,4 +31,64 @@ class ListApplications extends ListRecords
 
     protected static ?string $createButtonColor = 'success';
 
+    public function getTabs(): array
+    {
+        return [
+            'Tüm Başvurular' => Tab::make()
+                ->label('Tüm Başvurular')
+                ->icon('heroicon-o-document-text')
+                ->badge(ApplicationsResource::getModel()::count())
+                ->badgeColor('gray')
+                ,
+            'Bekleyen Başvurular' => Tab::make()
+                ->label('Bekleyen Başvurular')
+                ->icon('heroicon-o-clock')
+                ->modifyQueryUsing(fn ($query) => $query->where('status', 'awaiting_evaluation')
+                    ->orWhere('status', 'bekliyor')
+                    ->orWhere('status', 'beklemede'))
+                ->badge(ApplicationsResource::getModel()::where('status', 'awaiting_evaluation')
+                    ->orWhere('status', 'bekliyor')
+                    ->orWhere('status', 'beklemede')->count())
+                ->badgeColor('gray')
+                ,
+            'Onaylanan Başvurular' => Tab::make()
+                ->label('Onaylanan Başvurular')
+                ->icon('heroicon-o-check-circle')
+                ->modifyQueryUsing(fn ($query) => $query->where('status', 'accepted')
+                    ->orWhere('status', 'kabul_edildi')
+                    ->orWhere('status', 'onaylandi')
+                    ->orWhere('status', 'dogrulama_tamamlandi'))
+                ->badge(ApplicationsResource::getModel()::where('status', 'accepted')
+                    ->orWhere('status', 'kabul_edildi')
+                    ->orWhere('status', 'onaylandi')
+                    ->orWhere('status', 'dogrulama_tamamlandi')->count())
+                ->badgeColor('gray')
+                ,
+
+            'Reddedilen Başvurular' => Tab::make()
+                ->label('Reddedilen Başvurular')
+                ->icon('heroicon-o-x-circle')
+                ->modifyQueryUsing(fn ($query) => $query->where('status', 'rejected')
+                    ->orWhere('status', 'reddedildi')
+                    ->orWhere('status', 'red')
+                    ->orWhere('status', 'red_edildi'))
+                ->badge(ApplicationsResource::getModel()::where('status', 'rejected')
+                    ->orWhere('status', 'reddedildi')
+                    ->orWhere('status', 'red')
+                    ->orWhere('status', 'red_edildi')->count())
+                ->badgeColor('gray')
+                ,
+          
+            
+            'Mülakat Havuzu' => Tab::make()
+                ->label('Mülakat Havuzu')
+                ->icon('heroicon-o-user-group')
+                ->modifyQueryUsing(fn ($query) => $query->where('status', 'interview_pool')
+                    ->orWhere('status', 'mulakat_havuzu'))
+                ->badge(ApplicationsResource::getModel()::where('status', 'interview_pool')
+                    ->orWhere('status', 'mulakat_havuzu')->count())
+                ->badgeColor('gray')
+                ,
+        ];
+    }
 }

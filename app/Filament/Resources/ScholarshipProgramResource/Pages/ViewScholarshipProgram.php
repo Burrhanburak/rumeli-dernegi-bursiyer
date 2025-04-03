@@ -23,4 +23,21 @@ class ViewScholarshipProgram extends ViewRecord
                 ->color('danger'),
         ];
     }
+
+    protected static ?string $title = 'Burs Programı Listesi';
+
+    protected static ?string $breadcrumb = 'Burs Programları';
+
+    protected static ?string $breadcrumbParent = 'Programlar';
+
+
+
+    public function getTitle(): string
+    {
+        return 'Burs Programını Görüntüle';
+    }
+
+
+    
+
 }

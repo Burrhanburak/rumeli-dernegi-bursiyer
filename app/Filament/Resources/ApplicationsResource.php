@@ -12,6 +12,17 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use App\Models\User;
+use Filament\Forms\Components\TextInput;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Database\Eloquent\Collection;
+
+use Ysfkaya\FilamentPhoneInput\Forms\PhoneInput;
+use Ysfkaya\FilamentPhoneInput\Tables\PhoneColumn;
+use Ysfkaya\FilamentPhoneInput\Infolists\PhoneEntry;
+use Ysfkaya\FilamentPhoneInput\PhoneInputNumberType;
+use Filament\Notifications\Notification;
 
 class ApplicationsResource extends Resource
 {
@@ -19,7 +30,7 @@ class ApplicationsResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-document-text';
     
-    protected static ?string $navigationGroup = 'Başvuru Süreci';
+    protected static ?string $navigationGroup = 'Başvuru Yönetimi';
     
     protected static ?string $navigationLabel = 'Başvurular';
 
@@ -35,372 +46,868 @@ class ApplicationsResource extends Resource
     public static function form(Form $form): Form
     {
         return $form
+        ->schema([
+            // Personal Information / Kişisel Bilgiler
+           
+Forms\Components\Section::make('Kişisel Bilgiler')
+->description('Başvuru sahibinin kişisel bilgilerini girin')
+->icon('heroicon-o-user')
+->schema([
+Forms\Components\Grid::make()
+    ->schema([
+        Forms\Components\FileUpload::make('image')
+            ->label('Fotoğraf')
+            ->placeholder('Fotoğrafınızı yükleyin')
+            ->image()
+            ->imageEditor()
+            ->directory('applications/images')
+            ->required()
+            ->default(function () {
+                if (Auth::user()->image) {
+                    // Just use the path without Storage::url()
+                    return Auth::user()->image;
+                }
+                return null;
+            }),
+    ])->columns(1),
+    
+Forms\Components\Grid::make()
+    ->schema([
+        Forms\Components\TextInput::make('national_id')
+            ->label('T.C. Kimlik No')
+            ->placeholder('T.C. Kimlik Numaranız')
+            ->required()
+            ->numeric()
+            ->length(11)
+            ->default(Auth::user()->national_id),
+            
+        Forms\Components\TextInput::make('name')
+            ->label('Ad')
+            ->placeholder('Adınız')
+            ->required()
+            ->maxLength(255)
+            ->default(Auth::user()->name),
+            
+        Forms\Components\TextInput::make('surname')
+            ->label('Soyad')
+            ->placeholder('Soyadınız')
+            ->required()
+            ->maxLength(255)
+            ->default(Auth::user()->surname),
+    ])->columns(3),
+    
+Forms\Components\Grid::make()
+    ->schema([
+        Forms\Components\DatePicker::make('birth_date')
+            ->label('Doğum Tarihi')
+            ->native(false)
+            ->displayFormat('d/m/Y')
+            ->placeholder('Doğum Tarihiniz')
+            ->required()
+            ->default(Auth::user()->birth_date),
+            
+        Forms\Components\TextInput::make('birth_place')
+            ->label('Doğum Yeri')
+            ->placeholder('Doğum Yeriniz')
+            ->required()
+            ->maxLength(255),
+            
+        Forms\Components\TextInput::make('nationality')
+            ->label('Uyruk')
+            ->placeholder('Uyruğunuz')
+            ->required()
+            ->default('T.C')
+            ->maxLength(255),
+            
+        Forms\Components\Select::make('gender')
+            ->label('Cinsiyet')
+            ->placeholder('Cinsiyetinizi seçin')
+            ->required()
+            ->options([
+                'Male' => 'Erkek',
+                'Female' => 'Kadın',
+                'Other' => 'Diğer'
+            ]),
+    ])->columns(4),
+    
+Forms\Components\Grid::make()
+    ->schema([
+             
+        PhoneInput::make('phone')
+        ->defaultCountry('tr')
+        ->initialCountry('tr')
+        ->placeholder('Telefon numaranızı giriniz')
+        ->locale('tr')
+        ->countrySearch(false)
+        ->label('Telefon Numarası')
+        ->required()
+        ->unique(User::class, ignoreRecord: true)
+        ->validationMessages([
+            'unique' => 'Bu telefon numarası zaten kayıtlı.'
+        ])
+        ->default(Auth::user()->phone),
+     
+            
+        Forms\Components\TextInput::make('email')
+            ->label('E-posta')
+            ->placeholder('E-posta adresiniz')
+            ->required()
+            ->email()
+            ->maxLength(255)
+            ->default(Auth::user()->email),
+    ])->columns(2),
+    
+Forms\Components\Grid::make()
+    ->schema([
+        Forms\Components\Textarea::make('address')
+            ->label('Adres')
+            ->required()
+            ->placeholder('Adresiniz')
+            ->rows(2)
+            ->default(Auth::user()->address),
+    ])->columns(1),
+    
+Forms\Components\Grid::make()
+    ->schema([
+        Forms\Components\TextInput::make('city')
+            ->label('Şehir')
+            ->required()
+            ->placeholder('Şehir')
+            ->maxLength(255)
+            ->default(Auth::user()->city),
+            
+        Forms\Components\TextInput::make('postal_code')
+            ->label('Posta Kodu')
+            ->required()
+            ->placeholder('Posta kodunuz')
+            ->maxLength(255)
+            ->default(Auth::user()->postal_code),
+    ])->columns(2),
+    
+Forms\Components\Grid::make()
+    ->schema([
+        Forms\Components\Select::make('disability_status')
+            ->label('Engel Durumu')
+            ->placeholder('Engel durumunuzu seçin')
+            ->options([
+                'None' => 'Engel Yok',
+                'Mild' => 'Hafif',
+                'Moderate' => 'Orta',
+                'Severe' => 'Ağır'
+            ])
+            ->live()
+            ->afterStateUpdated(function ($state, $set) {
+                if ($state === 'None') {
+                    $set('physical_disability', null);
+                    $set('disability_description', null);
+                }
+            }),
+    ])->columns(1),
+    
+Forms\Components\Grid::make()
+    ->schema([
+        Forms\Components\Textarea::make('physical_disability')
+            ->label('Fiziksel Engeliniz')
+            ->placeholder('Fiziksel engeliniz varsa açıklayınız')
+            ->rows(2),
+            
+        Forms\Components\Textarea::make('disability_description')
+            ->label('Engel Açıklaması')
+            ->placeholder('Engel durumunuzu detaylı açıklayınız')
+            ->rows(2)
+    ])->columns(1),
+])
+->collapsible()
+->collapsed(false),
+                
+            // Registration Information / Kayıt Bilgileri
+            Forms\Components\Section::make('Kayıt Bilgileri')
+            ->description('Nüfus kayıt bilgilerinizi girin')
+            ->icon('heroicon-o-identification')
             ->schema([
-                Forms\Components\Section::make('Başvuru Bilgileri')
+                Forms\Components\Grid::make()
                     ->schema([
-                        Forms\Components\Select::make('user_id')
-                            ->label('Öğrenci')
-                            ->relationship('user', 'name')
-                            ->getOptionLabelFromRecordUsing(fn ($record) => $record->name . ' ' . $record->surname)
-                            ->preload()
-                            ->searchable()
-                            ->required(),
-                        Forms\Components\Select::make('program_id')
-                            ->label('Program')
-                            ->relationship('program', 'name')
-                            ->preload()
-                            ->searchable()
-                            ->required(),
-                        Forms\Components\Select::make('status')
-                            ->label('Durum')
-                            ->options([
-                                'burs_havuzu' => 'Burs Havuzu',
-                                'on_kabul' => 'Ön Kabul',
-                                'red_edildi' => 'Reddedildi',
-                                'evrak_bekleniyor' => 'Evrak Bekleniyor',
-                                'evrak_incelemede' => 'Evrak İncelemede',
-                                'mulakat_havuzu' => 'Mülakat Havuzu',
-                                'mulakat_planlandi' => 'Mülakat Planlandı',
-                                'mulakat_tamamlandi' => 'Mülakat Tamamlandı',
-                                'kabul_edildi' => 'Kabul Edildi',
-                                'kesin_kabul' => 'Kesin Kabul',
-                                'onceki_burslu' => 'Önceki Burslu',
-                            ])
+                        Forms\Components\TextInput::make('registered_province')
+                            ->label('Nüfusa Kayıtlı İl')
                             ->required()
-                            ->searchable()
-                            ->preload()
-                            ->placeholder('Durum seçin')
-                            ->selectablePlaceholder(false)
-                            ->optionsLimit(10),
-                        Forms\Components\DatePicker::make('application_date')
-                            ->label('Başvuru Tarihi')
-                            ->default(now()),
+                            ->placeholder('Nüfusa kayıtlı olduğunuz il')
+                            ->maxLength(255),
+                            
+                        Forms\Components\TextInput::make('registered_district')
+                            ->label('Nüfusa Kayıtlı İlçe')
+                            ->required()
+                            ->placeholder('Nüfusa kayıtlı olduğunuz ilçe')
+                            ->maxLength(255),
+                    ])->columns(2),
+            ])
+            ->collapsible()
+            ->collapsed(true),
+            
+            // Education Information / Eğitim Bilgileri
+            Forms\Components\Section::make('Eğitim Bilgileri')
+            ->description('Eğitim durumunuz ile ilgili bilgileri girin')
+            ->icon('heroicon-o-academic-cap')
+            ->schema([
+                Forms\Components\Grid::make()
+                    ->schema([
+                        Forms\Components\TextInput::make('school_name')
+                            ->label('Okul Adı')
+                            ->required()
+                            ->placeholder('Okuduğunuz okulun adı')
+                            ->maxLength(255),
+                            
+                        Forms\Components\TextInput::make('school_department')
+                            ->label('Bölüm')
+                            ->required()
+                            ->placeholder('Okuduğunuz bölüm')
+                            ->maxLength(255),
                     ])->columns(2),
                     
-                Forms\Components\Section::make('Kişisel Bilgiler')
-                
+                Forms\Components\Grid::make()
                     ->schema([
-                        Forms\Components\TextInput::make('tc_kimlik_no')
-                            ->label('TC Kimlik No')
-                            ->placeholder('Örnek: 12345678901')
-                            ->maxLength(11),
-                        Forms\Components\TextInput::make('ad')
-                            ->label('Ad'),
-                        Forms\Components\TextInput::make('soyad')
-                            ->label('Soyad'),
-                        Forms\Components\DatePicker::make('dogum_tarihi')
-                            ->label('Doğum Tarihi'),
-                        Forms\Components\TextInput::make('dogum_yeri')
-                            ->label('Doğum Yeri'),
-                        Forms\Components\TextInput::make('uyrugu')
-                            ->label('Uyruğu')
-                            ->placeholder('T.C'),
+                        Forms\Components\TextInput::make('grade')
+                            ->label('Sınıf')
+                            ->required()
                             
-                        Forms\Components\Select::make('cinsiyet')
-                            ->label('Cinsiyet')
-                            ->options([
-                                'Erkek' => 'Erkek',
-                                'Kadın' => 'Kadın',
-                                'Diğer' => 'Diğer',
-                            ]),
-                        Forms\Components\TextInput::make('telefon')
-                            ->label('Telefon')
-                            ->placeholder('Örnek: 0555 555 55 55')
-                            ->telRegex('/^[+]*[(]{0,1}[0-9]{1,4}[)]{0,1}[-\s\.\/0-9]*$/')
-                            ->tel(),
-                        Forms\Components\TextInput::make('email')
-                            ->label('Email')
-                            ->placeholder('Örnek: example@example.com')
-                            ->email(),
-                        Forms\Components\Textarea::make('beden_ozru')
-                            ->label('Beden Özrünüz Varsa Yazınız'),
-                        Forms\Components\TextInput::make('nufusa_kayitli_il')
-                            ->label('Nüfusa Kayıtlı Olduğu İl'),
-                        Forms\Components\TextInput::make('nufusa_kayitli_ilce')
-                            ->label('Nüfusa Kayıtlı Olduğu İlçe'),
-                        Forms\Components\FileUpload::make('image')
-                            ->label('Profil Resmi')
-                            ->image()
-                            ->imageEditor()
-                            ->circleCropper()
-                            ->directory('application-images')
-                            ->visibility('public')
-                            ->downloadable()
-                            ->placeholder('Profil resmi yükleyin veya sürükleyin')
-                            ->imagePreviewHeight('250')
-                            ->loadingIndicatorPosition('left')
-                            ->panelAspectRatio('4:1')
-                            ->panelLayout('integrated')
-                            ->disk('public'),
-                    ])->columns(2),
-
-                Forms\Components\Section::make('Eğitim Bilgileri')
-                    ->schema([
-                        Forms\Components\TextInput::make('okul_adi')
-                            ->label('Okul Adı')
+                            ->placeholder('Kaçıncı sınıfta olduğunuz')
                             ->maxLength(255),
-                        Forms\Components\TextInput::make('okul_bolumu')
-                            ->label('Okul Bölümü')
-                            ->maxLength(255),
-                        Forms\Components\TextInput::make('sinif')
-                            ->label('Sınıf'),
-                        Forms\Components\TextInput::make('giris_yili')
+                            
+                        Forms\Components\TextInput::make('enrollment_year')
                             ->label('Giriş Yılı')
+                            ->placeholder('Üniversiteye giriş yılınız')
                             ->numeric(),
-                        Forms\Components\TextInput::make('burs_orani')
-                            ->label('Burs Oranı %'),
-                        Forms\Components\TextInput::make('universiteye_giris_puani')
-                            ->label('Üniversiteye Giriş Puanı')
-                            ->numeric(),
-                        Forms\Components\TextInput::make('ogrenci_numarasi')
-                            ->label('Öğrenci Numarası'),
-                        Forms\Components\TextInput::make('ilkokul_adi')
-                            ->label('Bitirdiğiniz Okulların adı ve derecesi (İlkokul)'),
-                        Forms\Components\TextInput::make('ilkokul_mezuniyet_yili')
-                            ->label('İlkokul Mezuniyet Yılı')
-                            ->numeric(),
-                        Forms\Components\TextInput::make('lise_adi')
-                            ->label('Bitirdiğiniz Okulların adı ve derecesi (Lise veya dengi okul)'),
-                        Forms\Components\TextInput::make('lise_mezuniyet_yili')
-                            ->label('Lise Mezuniyet Yılı')
+                            
+                        Forms\Components\TextInput::make('student_id')
+                            ->label('Öğrenci Numarası')
+                            ->placeholder('Öğrenci numaranız')
+                            ->maxLength(255),
+                    ])->columns(3),
+                    
+                Forms\Components\Grid::make()
+                    ->schema([
+                        Forms\Components\TextInput::make('scholarship_rate')
+                            ->label('Burs Oranı')
+                            ->placeholder('Mevcut burs oranınız (yoksa boş bırakın)')
+                            ->suffix('%')
+                            ->maxLength(255),
+                            
+                        Forms\Components\TextInput::make('university_entrance_score')
+                            ->label('Üniversite Giriş Puanı')
+                            ->maxvalue(500)
+                            ->placeholder('Üniversite giriş puanınız')
                             ->numeric(),
                     ])->columns(2),
-                
-                Forms\Components\Section::make('Aile Bilgileri')
+                    
+                Forms\Components\Card::make()
                     ->schema([
-                        Forms\Components\TextInput::make('baba_adi')
-                            ->label('Baba Adı'),
-                        Forms\Components\TextInput::make('baba_soyadi')
-                            ->label('Baba Soyadı'),
-                        Forms\Components\TextInput::make('baba_dogum_yili')
-                            ->label('Baba Doğum Yılı')
+                        Forms\Components\Grid::make()
+                            ->schema([
+                                Forms\Components\TextInput::make('primary_school_name')
+                                    ->label('İlkokul Adı')
+                                    ->placeholder('Mezun olduğunuz ilkokulun adı')
+                                    ->maxLength(255),
+                                    
+                                Forms\Components\TextInput::make('primary_school_graduation_year')
+                                    ->label('İlkokul Mezuniyet Yılı')
+                                    ->placeholder('İlkokuldan mezun olduğunuz yıl')
+                                    ->numeric()
+                                    ->nullable(),
+                            ])->columns(2),
+                            
+                        Forms\Components\Grid::make()
+                            ->schema([
+                                Forms\Components\TextInput::make('high_school_name')
+                                    ->label('Lise Adı')
+                                    ->placeholder('Mezun olduğunuz lisenin adı')
+                                    ->maxLength(255),
+                                    
+                                Forms\Components\TextInput::make('high_school_graduation_year')
+                                    ->label('Lise Mezuniyet Yılı')
+                                    ->placeholder('Liseden mezun olduğunuz yıl')
+                                    ->numeric()
+                                    ->nullable(),
+                            ])->columns(2),
+                    ])
+                    ->columns(1)
+                    ->heading('Mezuniyet Bilgileri'),
+            ])
+            ->collapsible()
+            ->collapsed(true),
+            
+            // Family Information / Aile Bilgileri
+            Forms\Components\Section::make('Aile Bilgileri')
+            ->description('Aileniz hakkında bilgileri girin')
+            ->icon('heroicon-o-users')
+            ->schema([
+                // Father Info / Baba Bilgileri
+                Forms\Components\Card::make()
+                    ->schema([
+                        Forms\Components\Grid::make()
+                            ->schema([
+                                Forms\Components\TextInput::make('father_name')
+                                    ->label('Baba Adı')
+                                    ->placeholder('Babanızın adı')
+                                    ->maxLength(255),
+                                    
+                                Forms\Components\TextInput::make('father_surname')
+                                    ->label('Baba Soyadı')
+                                    ->placeholder('Babanızın soyadı')
+                                    ->maxLength(255),
+                            ])->columns(2),
+                            
+                        Forms\Components\Grid::make()
+                            ->schema([
+                                Forms\Components\TextInput::make('father_birth_year')
+                                    ->label('Baba Doğum Yılı')
+                                    ->placeholder('Babanızın doğum yılı')
+                                    ->numeric()
+                                    ->nullable(),
+                                    
+                                Forms\Components\TextInput::make('father_birth_place')
+                                    ->label('Baba Doğum Yeri')
+                                    ->placeholder('Babanızın doğum yeri')
+                                    ->maxLength(255),
+                            ])->columns(2),
+                            
+                        Forms\Components\Grid::make()
+                            ->schema([
+                                Forms\Components\TextInput::make('father_occupation')
+                                    ->label('Baba Mesleği')
+                                    ->placeholder('Babanızın mesleği')
+                                    ->maxLength(255),
+                                    
+                                    TextInput::make('father_monthly_income')
+                                    ->label('Baba Aylık Net Gelir')
+                                    ->placeholder('Babanızın aylık net geliri')
+                                    ->prefix('₺')
+                                    ->maxValue(42949672.95)
+                                    ->numeric(),
+                                    
+                                Forms\Components\TextInput::make('father_death_year')
+                                    ->label('Baba Vefat Yılı')
+                                    ->placeholder('Vefat ettiyse yılı (yoksa boş bırakın)')
+                                    ->numeric()
+                                    ->nullable(),
+                            ])->columns(3),
+                    ])
+                    ->columns(1)
+                    ->heading('Baba Bilgileri'),
+                    
+                // Mother Info / Anne Bilgileri
+                Forms\Components\Card::make()
+                    ->schema([
+                        Forms\Components\Grid::make()
+                            ->schema([
+                                Forms\Components\TextInput::make('mother_name')
+                                    ->label('Anne Adı')
+                                    ->placeholder('Annenizin adı')
+                                    ->maxLength(255),
+                                    
+                                Forms\Components\TextInput::make('mother_surname')
+                                    ->label('Anne Soyadı')
+                                    ->placeholder('Annenizin soyadı')
+                                    ->maxLength(255),
+                            ])->columns(2),
+                            
+                        Forms\Components\Grid::make()
+                            ->schema([
+                                Forms\Components\TextInput::make('mother_birth_year')
+                                    ->label('Anne Doğum Yılı')
+                                    ->placeholder('Annenizin doğum yılı')
+                                    ->numeric()
+                                    ->nullable(),
+                                    
+                                Forms\Components\TextInput::make('mother_birth_place')
+                                    ->label('Anne Doğum Yeri')
+                                    ->placeholder('Annenizin doğum yeri')
+                                    ->maxLength(255),
+                            ])->columns(2),
+                            
+                        Forms\Components\Grid::make()
+                            ->schema([
+                                Forms\Components\TextInput::make('mother_occupation')
+                                    ->label('Anne Mesleği')
+                                    ->placeholder('Annenizin mesleği')
+                                    ->maxLength(255),
+                                    
+                                Forms\Components\TextInput::make('mother_monthly_income')
+                                    ->label('Anne Aylık Net Gelir')
+                                    ->placeholder('Annenizin aylık net geliri')
+                                    ->prefix('₺')
+                                    ->numeric()
+                                    ->nullable(),
+                                    
+                                Forms\Components\TextInput::make('mother_death_year')
+                                    ->label('Anne Vefat Yılı')
+                                    ->placeholder('Vefat ettiyse yılı (yoksa boş bırakın)')
+                                    ->numeric()
+                                    ->nullable(),
+                            ])->columns(3),
+                    ])
+                    ->columns(1)
+                    ->heading('Anne Bilgileri'),
+                    
+                // Siblings Info / Kardeş Bilgileri
+                Forms\Components\Card::make()
+                    ->schema([
+                        // First sibling
+                        Forms\Components\Grid::make()
+                            ->schema([
+                                Forms\Components\TextInput::make('sibling1_name')
+                                    ->label('1. Kardeş Adı')
+                                    ->placeholder('1. kardeşinizin adı')
+                                    ->maxLength(255),
+                                    
+                                Forms\Components\TextInput::make('sibling1_surname')
+                                    ->label('1. Kardeş Soyadı')
+                                    ->placeholder('1. kardeşinizin soyadı')
+                                    ->maxLength(255),
+                                    
+                                Forms\Components\TextInput::make('sibling1_age')
+                                    ->label('1. Kardeş Yaşı')
+                                    ->placeholder('1. kardeşinizin yaşı')
+                                    ->numeric()
+                                    ->nullable(),
+                                    
+                                Forms\Components\TextInput::make('sibling1_education')
+                                    ->label('1. Kardeş Eğitim Durumu')
+                                    ->placeholder('1. kardeşinizin eğitim durumu')
+                                    ->maxLength(255),
+                            ])->columns(4),
+
+                        // Second sibling
+                        Forms\Components\Grid::make()
+                            ->schema([
+                                Forms\Components\TextInput::make('sibling2_name')
+                                    ->label('2. Kardeş Adı')
+                                    ->placeholder('2. kardeşinizin adı (yoksa boş bırakın)')
+                                    ->maxLength(255),
+                                    
+                                Forms\Components\TextInput::make('sibling2_surname')
+                                    ->label('2. Kardeş Soyadı')
+                                    ->placeholder('2. kardeşinizin soyadı')
+                                    ->maxLength(255),
+                                    
+                                Forms\Components\TextInput::make('sibling2_age')
+                                    ->label('2. Kardeş Yaşı')
+                                    ->placeholder('2. kardeşinizin yaşı')
+                                    ->numeric()
+                                    ->nullable(),
+                                    
+                                Forms\Components\TextInput::make('sibling2_education')
+                                    ->label('2. Kardeş Eğitim Durumu')
+                                    ->placeholder('2. kardeşinizin eğitim durumu')
+                                    ->maxLength(255),
+                            ])->columns(4),
+                            
+                        // Third sibling
+                        Forms\Components\Grid::make()
+                            ->schema([
+                                Forms\Components\TextInput::make('sibling3_name')
+                                    ->label('3. Kardeş Adı')
+                                    ->placeholder('3. kardeşinizin adı (yoksa boş bırakın)')
+                                    ->maxLength(255),
+                                    
+                                Forms\Components\TextInput::make('sibling3_surname')
+                                    ->label('3. Kardeş Soyadı')
+                                    ->placeholder('3. kardeşinizin soyadı')
+                                    ->maxLength(255),
+                                    
+                                Forms\Components\TextInput::make('sibling3_age')
+                                    ->label('3. Kardeş Yaşı')
+                                    ->placeholder('3. kardeşinizin yaşı')
+                                    ->numeric() 
+                                    ->nullable(),
+                                    
+                                Forms\Components\TextInput::make('sibling3_education')
+                                    ->label('3. Kardeş Eğitim Durumu')
+                                    ->placeholder('3. kardeşinizin eğitim durumu')
+                                    ->maxLength(255),
+                            ])->columns(4),
+                            
+                        // Total sibling income
+                        Forms\Components\Grid::make()
+                            ->schema([
+                                Forms\Components\TextInput::make('sibling_monthly_income')
+                                    ->label('Kardeşlerin Toplam Aylık Geliri')
+                                    ->placeholder('Kardeşlerin toplam aylık geliri')
+                                    ->prefix('₺')
+                                    ->numeric()
+                                    ->nullable(),
+                            ])->columns(1),
+                    ])
+                    ->columns(1)
+                    ->heading('Kardeş Bilgileri'),
+            ])
+            ->collapsible()
+            ->collapsed(true),
+
+            // Residence Information / İkamet Bilgileri
+            Forms\Components\Section::make('İkamet Bilgileri')
+            ->description('İkamet ettiğiniz yer hakkında bilgileri girin')
+            ->icon('heroicon-o-home')
+            ->schema([
+                Forms\Components\Grid::make()
+                    ->schema([
+                        Forms\Components\TextInput::make('family_head_dependent_count')
+                            ->label('Aile Reisinin Baktığı Kişi Sayısı')
+                            ->placeholder('Aile reisinin bakmakla yükümlü olduğu kişi sayısı')
                             ->numeric(),
-                        Forms\Components\TextInput::make('baba_dogum_yeri')
-                            ->label('Baba Doğum Yeri'),
-                        Forms\Components\TextInput::make('baba_meslegi')
-                            ->label('Babanızın Mesleği'),
-                        Forms\Components\TextInput::make('baba_vefat_yili')
-                            ->label('Baba Vefat etmişse Yılı')
-                            ->numeric(),
-                        Forms\Components\TextInput::make('anne_adi')
-                            ->label('Anne Adı'),
-                        Forms\Components\TextInput::make('anne_soyadi')
-                            ->label('Anne Soyadı'),
-                        Forms\Components\TextInput::make('anne_dogum_yili')
-                            ->label('Anne Doğum Yılı')
-                            ->numeric(),
-                        Forms\Components\TextInput::make('anne_dogum_yeri')
-                            ->label('Anne Doğum Yeri'),
-                        Forms\Components\TextInput::make('anne_meslegi')
-                            ->label('Annenizin Mesleği'),
-                        Forms\Components\TextInput::make('anne_vefat_yili')
-                            ->label('Anne Vefat etmişse Yılı')
-                            ->numeric(),
+                            
+                        Forms\Components\TextInput::make('family_subsistence_responsibility')
+                            ->label('Ailenin Geçim Sorumluluğu')
+                            ->placeholder('Ailenin geçimini kim sağlıyor?')
+                            ->maxLength(255),
                     ])->columns(2),
-                
-                Forms\Components\Section::make('Kardeş Bilgileri')
+                    
+                // Aile İkamet Bilgileri
+                Forms\Components\Card::make()
                     ->schema([
-                        Forms\Components\TextInput::make('kardes1_adi')
-                            ->label('Kardeş 1 Adı'),
-                        Forms\Components\TextInput::make('kardes1_soyadi')
-                            ->label('Kardeş 1 Soyadı'),
-                        Forms\Components\TextInput::make('kardes1_yasi')
-                            ->label('Kardeş 1 Yaşı')
-                            ->numeric(),
-                        Forms\Components\TextInput::make('kardes1_ogrenim_durumu')
-                            ->label('Kardeş 1 Öğrenim Durumu'),
-                        Forms\Components\TextInput::make('kardes2_adi')
-                            ->label('Kardeş 2 Adı'),
-                        Forms\Components\TextInput::make('kardes2_soyadi')
-                            ->label('Kardeş 2 Soyadı'),
-                        Forms\Components\TextInput::make('kardes2_yasi')
-                            ->label('Kardeş 2 Yaşı')
-                            ->numeric(),
-                        Forms\Components\TextInput::make('kardes2_ogrenim_durumu')
-                            ->label('Kardeş 2 Öğrenim Durumu'),
-                        Forms\Components\TextInput::make('kardes3_adi')
-                            ->label('Kardeş 3 Adı'),
-                        Forms\Components\TextInput::make('kardes3_soyadi')
-                            ->label('Kardeş 3 Soyadı'),
-                        Forms\Components\TextInput::make('kardes3_yasi')
-                            ->label('Kardeş 3 Yaşı')
-                            ->numeric(),
-                        Forms\Components\TextInput::make('kardes3_ogrenim_durumu')
-                            ->label('Kardeş 3 Öğrenim Durumu'),
-                        Forms\Components\TextInput::make('kardes4_adi')
-                            ->label('Kardeş 4 Adı'),
-                        Forms\Components\TextInput::make('kardes4_soyadi')
-                            ->label('Kardeş 4 Soyadı'),
-                        Forms\Components\TextInput::make('kardes4_yasi')
-                            ->label('Kardeş 4 Yaşı')
-                            ->numeric(),
-                        Forms\Components\TextInput::make('kardes4_ogrenim_durumu')
-                            ->label('Kardeş 4 Öğrenim Durumu'),
-                        Forms\Components\TextInput::make('kardes5_adi')
-                            ->label('Kardeş 5 Adı'),
-                        Forms\Components\TextInput::make('kardes5_soyadi')
-                            ->label('Kardeş 5 Soyadı'),
-                        Forms\Components\TextInput::make('kardes5_yasi')
-                            ->label('Kardeş 5 Yaşı')
-                            ->numeric(),
-                        Forms\Components\TextInput::make('kardes5_ogrenim_durumu')
-                            ->label('Kardeş 5 Öğrenim Durumu'),
-                    ])->columns(4),
-                
-                Forms\Components\Section::make('İkamet Bilgileri')
+                        Forms\Components\Textarea::make('family_residence_address')
+                            ->label('Aile İkametgah Adresi')
+                            ->placeholder('Ailenizin ikamet ettiği adres')
+                            ->rows(2),
+                            
+                        Forms\Components\Grid::make()
+                            ->schema([
+                                Forms\Components\TextInput::make('residence_province')
+                                    ->label('İkametgah İli')
+                                    ->placeholder('İkamet edilen il')
+                                    ->maxLength(255),
+                                    
+                                Forms\Components\TextInput::make('residence_district')
+                                    ->label('İkametgah İlçesi')
+                                    ->placeholder('İkamet edilen ilçe')
+                                    ->maxLength(255),
+                                    
+                                   
+                                    PhoneInput::make('family_phone')
+                                    ->label('Aile Telefon')
+                                    ->placeholder('Ailenizin telefon numarası')
+                                    ->defaultCountry('tr')
+                                    ->initialCountry('tr')
+                            ])->columns(3),
+                    ])
+                    ->columns(1)
+                    ->heading('Aile İkamet Bilgileri'),
+                    
+                // Öğrenim İkamet Bilgileri
+                Forms\Components\Card::make()
                     ->schema([
-                        Forms\Components\TextInput::make('aile_reisinin_baktigi_fert_sayisi')
-                            ->label('Aile Reisinin Bakmakta Olduğu Fert Sayısı')
-                            ->numeric(),
-                        Forms\Components\TextInput::make('ailenin_geçim_sorumlulugu')
-                            ->label('Sizin ve Ailenizin Geçim Sorumluluğu Kimin Üzerinedir'),
-                        Forms\Components\Textarea::make('aile_ikametgah_adresi')
-                            ->label('Ailenizin İkametgah Adresi'),
-                        Forms\Components\TextInput::make('ikametgah_ili')
-                            ->label('İkametgah İli'),
-                        Forms\Components\TextInput::make('ikametgah_ilcesi')
-                            ->label('İkametgah İlçesi'),
-                        Forms\Components\TextInput::make('aile_telefon')
-                            ->label('Ailenizin Telefon Numarası')
-                            ->tel(),
-                        Forms\Components\Select::make('ailenin_yaninda_kalarak_okula_devam')
-                            ->label('Ailenizin Yanında Kalarak mı Okula Devam Ediyorsunuz?')
+                        Forms\Components\Grid::make()
+                            ->schema([
+                                Forms\Components\Select::make('resides_with_family')
+                                    ->label('Ailenin Yanında Kalarak Okula Devam')
+                                    ->placeholder('Ailenizle birlikte mi yaşıyorsunuz?')
+                                    ->options([
+                                        'Yes' => 'Evet',
+                                        'No' => 'Hayır'
+                                    ])
+                                    ->live()
+                                    ->afterStateUpdated(function ($state, $set) {
+                                        if ($state === 'Yes') {
+                                            $set('dormitory_monthly_payment', null);
+                                            $set('education_residence_address', null);
+                                            $set('education_province', null);
+                                            $set('education_district', null);
+                                        }
+                                    }),
+                                    
+                                Forms\Components\TextInput::make('dormitory_monthly_payment')
+                                    ->label('Yurtta Kalıyorsa Aylık Ödeme')
+                                    ->placeholder('Yurtta kalıyorsanız aylık ödediğiniz tutar')
+                                    ->prefix('₺')
+                                    ->numeric()
+                                    ->nullable()
+                                    
+                            ])->columns(2),
+                            
+                        Forms\Components\Textarea::make('education_residence_address')
+                            ->label('Öğrenim Sırasında Kaldığı Adres')
+                            ->placeholder('Öğrenim sırasında kaldığınız adres')
+                            ->rows(2),
+                            
+                            
+                        Forms\Components\Grid::make()
+                            ->schema([
+                                Forms\Components\TextInput::make('education_province')
+                                    ->label('Öğrenim İli')
+                                    ->placeholder('Öğrenim gördüğünüz il')
+                                    ->maxLength(255),
+                                   
+                                    
+                                Forms\Components\TextInput::make('education_district')
+                                    ->label('Öğrenim İlçesi')
+                                    ->placeholder('Öğrenim gördüğünüz ilçe')
+                                    ->maxLength(255),
+                                    
+                            ])->columns(2),
+                    ])
+                    ->columns(1)
+                    ->heading('Öğrenim Sırasında İkamet Bilgileri'),
+            ])
+            ->collapsible()
+            ->collapsed(true),
+            
+            // Financial Information / Mali Bilgiler
+            Forms\Components\Section::make('Mali Bilgiler')
+            ->description('Mali durumunuz hakkında bilgileri girin')
+            ->icon('heroicon-o-banknotes')
+            ->schema([
+                Forms\Components\Grid::make()
+                    ->schema([
+                        Forms\Components\TextInput::make('spouse_monthly_income')
+                            ->label('Eş Aylık Net Gelir')
+                            ->placeholder('Evliyseniz eşinizin aylık net geliri')
+                            ->prefix('₺')
+                            ->numeric()
+                            ->nullable(),
+                            
+                        Forms\Components\TextInput::make('death_benefit_annual_income')
+                            ->label('Vefat ile Bağlı Maaş Yıllık Net Gelir')
+                            ->placeholder('Vefat ile bağlanan yıllık net maaş geliri')
+                            ->prefix('₺')
+                            ->numeric()
+                            ->nullable(),
+                    ])->columns(2),
+                    
+                Forms\Components\Grid::make()
+                    ->schema([
+                        Forms\Components\Select::make('family_owns_house')
+                            ->label('Ailenin Evi Var mı?')
+                            ->placeholder('Ailenize ait ev var mı?')
                             ->options([
-                                'Evet' => 'Evet',
-                                'Hayır' => 'Hayır',
-                            ]),
-                        Forms\Components\TextInput::make('yurtta_kaliyorsa_aylik_odeme')
-                            ->label('Yurtta Kalıyorsanız Aylık Ne Kadar Ödüyorsunuz?')
-                            ->numeric(),
-                        Forms\Components\Textarea::make('ogrenim_sirasinda_kaldigi_adres')
-                            ->label('Öğrenim Sırasında Kaldığınız İkametgah Adresiniz'),
-                        Forms\Components\TextInput::make('ogrenim_ili')
-                            ->label('Öğrenim İli'),
-                        Forms\Components\TextInput::make('ogrenim_ilcesi')
-                            ->label('Öğrenim İlçesi'),
+                                'Yes' => 'Evet',
+                                'No' => 'Hayır'
+                            ])
+                            ->live()
+                            ->afterStateUpdated(function ($state, $set) {
+                                if ($state === 'Yes') {
+                                    $set('rent_payment_amount', null);
+                                }
+                            }),
+                            
+                        Forms\Components\TextInput::make('rent_payment_amount')
+                            ->label('Kirada Oturuyor İse Kira Miktarı')
+                            ->placeholder('Kirada oturuyorsanız aylık kira miktarı')
+                            ->prefix('₺')
+                            ->numeric()
+                            ->nullable(),
+                            
                     ])->columns(2),
-                
-                Forms\Components\Section::make('Mali Bilgiler')
+                    
+                Forms\Components\Textarea::make('real_estate_value_and_income')
+                    ->label('Gayrimenkul Değeri ve Geliri')
+                    ->placeholder('Sahip olduğunuz gayrimenkullerin değeri ve geliri')
+                    ->rows(2),
+                    
+                Forms\Components\Grid::make()
                     ->schema([
-                        Forms\Components\TextInput::make('baba_aylik_net_gelir')
-                            ->label('Babanızın Aylık Net Geliri (TL)')
+                        Forms\Components\TextInput::make('car_model_year')
+                            ->label('Otomobil Model Yılı')
+                            ->placeholder('Arabanız varsa model yılı (yoksa boş bırakın)')
                             ->numeric()
-                            ->prefix('₺'),
-                        Forms\Components\TextInput::make('anne_aylik_net_gelir')
-                            ->label('Annenizin Aylık Net Geliri (TL)')
+                            ->nullable(),
+                            
+                        Forms\Components\TextInput::make('other_income_amount')
+                            ->label('Başka Gelir Miktarı')
+                            ->placeholder('Varsa diğer gelir miktarınız')
+                            ->prefix('₺')
                             ->numeric()
-                            ->prefix('₺'),
-                        Forms\Components\TextInput::make('kardes_aylik_net_gelir')
-                            ->label('Kardeşinizin Aylık Net Geliri (TL)')
-                            ->numeric()
-                            ->prefix('₺'),
-                        Forms\Components\TextInput::make('es_aylik_net_gelir')
-                            ->label('Varsa Eşinizin Aylık Net Geliri (TL)')
-                            ->numeric()
-                            ->prefix('₺'),
-                        Forms\Components\TextInput::make('vefat_ile_bagli_maas_yillik_net_gelir')
-                            ->label('Babanızın yada Annenizin Vefatı ile Size Bağlanan Maaşın Yıllık Net Geliri (TL)')
-                            ->numeric()
-                            ->prefix('₺'),
-                        Forms\Components\Select::make('ailenin_evi_var_mi')
-                            ->label('Ailenizin Evi Var Mı?')
+                            ->nullable(),
+                    ])->columns(2),
+            ])
+            ->collapsible()
+            ->collapsed(true),
+            
+            // Other Information / Diğer Bilgiler
+            Forms\Components\Section::make('Diğer Bilgiler')
+            ->description('Kişisel gelişim ve ilgi alanlarınız hakkında bilgileri girin')
+            ->icon('heroicon-o-puzzle-piece')
+            ->schema([
+                Forms\Components\Grid::make()
+                    ->schema([
+                        Forms\Components\Textarea::make('field_selection')
+                            ->label('Branş Seçimi')
+                            ->placeholder('İlgilendiğiniz branşlar')
+                            ->rows(2),
+                    ])->columns(1),
+                    
+                Forms\Components\Grid::make()
+                    ->schema([
+                        Forms\Components\Textarea::make('club_membership')
+                            ->label('Kulüp Üyeliği')
+                            ->placeholder('Üye olduğunuz kulüpler')
+                            ->rows(2),
+                    ])->columns(1),
+                    
+                Forms\Components\Grid::make()
+                    ->schema([
+                        Forms\Components\Textarea::make('library_usage')
+                            ->label('Kütüphane Kullanımı')
+                            ->placeholder('Kütüphane kullanım alışkanlıklarınız')
+                            ->rows(2),
+                    ])->columns(1),
+                    
+                Forms\Components\Grid::make()
+                    ->schema([
+                        Forms\Components\Textarea::make('hobby')
+                            ->label('Hobi')
+                            ->placeholder('Hobileriniz')
+                            ->rows(2),
+                    ])->columns(1),
+                    
+                Forms\Components\Grid::make()
+                    ->schema([
+                        Forms\Components\Select::make('scholarship_commitment')
+                            ->label('Burs Verme Sözü')
+                            ->placeholder('İleride başka öğrencilere burs vermeyi düşünür müsünüz?')
                             ->options([
-                                'Evet' => 'Evet',
-                                'Hayır' => 'Hayır',
-                            ]),
-                        Forms\Components\TextInput::make('kirada_oturuyor_ise_kira_miktari')
-                            ->label('Kirada Oturuyor ise Kira Miktarı')
-                            ->numeric()
-                            ->prefix('₺'),
-                        Forms\Components\Textarea::make('gayrimenkul_degeri_ve_geliri')
-                            ->label('Oturulan Evden Başka Ailenizin Gayrimenkulu Varsa Takribi Değeri ve Geliri'),
-                        Forms\Components\TextInput::make('otomobil_model_yili')
-                            ->label('Aileye Ait Otomobil Varsa Model Yılı')
-                            ->numeric(),
-                        Forms\Components\TextInput::make('baska_gelir_miktari')
-                            ->label('Ailenin Başka Geliri Varsa Miktarı')
-                            ->numeric()
-                            ->prefix('₺'),
-                    ])->columns(2),
-                
-                Forms\Components\Section::make('Diğer Bilgiler')
+                                'Yes' => 'Evet',
+                                'No' => 'Hayır'
+                            ])
+                            ->live()
+                            ->afterStateUpdated(function ($state, $set) {
+                                if ($state === 'No') {
+                                    $set('scholarship_commitment_reason', null);
+                                }
+                            }),
+                    ])->columns(1),
+                    
+                Forms\Components\Grid::make()
                     ->schema([
-                        Forms\Components\Textarea::make('brans_secimi')
-                            ->label('Öğrenim gördüğünüz bölümde branş seçme söz konusu ise hangi branşı seçmeyi düşünüyorsunuz?'),
-                        Forms\Components\Textarea::make('kulup_uyeligi')
-                            ->label('Okulunuzda herhangi bir klübe üye misiniz? Henüz üye değilseniz üye olmayı düşündüğünüz bir klüp var mı?'),
-                        Forms\Components\Textarea::make('kutuphane_kullanimi')
-                            ->label('Üniversitenizin veya başka üniversitelerin kütüphanelerinden veya devlet kütüphanesi vb. kütüphanelerden faydalanıyor musunuz? Nasıl faydalanıyorsunuz?'),
-                        Forms\Components\Textarea::make('hobi')
-                            ->label('Resim, müzik, edebiyat, sinema vb. bir hobiniz var mı?'),
-                        Forms\Components\Select::make('burs_verme_sozu')
-                            ->label('İleride bu çatı altında siz de bir kişiye burs olarak yardımcı olmak isteyip bunun sözünü verir misiniz?')
+                        Forms\Components\Textarea::make('social_media_usage')
+                            ->label('Sosyal Medya Kullanımı')
+                            ->placeholder('Sosyal medya kullanım alışkanlıklarınız')
+                            ->rows(2),
+                    ])->columns(1),
+                    
+                Forms\Components\Grid::make()
+                    ->schema([
+                        Forms\Components\Textarea::make('social_responsibility_project')
+                            ->label('Sosyal Sorumluluk Projesi')
+                            ->placeholder('Katıldığınız sosyal sorumluluk projeleri')
+                            ->rows(2),
+                    ])->columns(1),
+                    
+                Forms\Components\Grid::make()
+                    ->schema([
+                        Forms\Components\Textarea::make('professional_success_opinion')
+                            ->label('İş Hayatında Başarı Görüşü')
+                            ->placeholder('İş hayatında başarılı olmak için neler gerektiği hakkındaki görüşleriniz')
+                            ->rows(2),
+                    ])->columns(1),
+                    
+                Forms\Components\Grid::make()
+                    ->schema([
+                        Forms\Components\Textarea::make('post_graduation_goal')
+                            ->label('Mezuniyet Sonrası Hedef')
+                            ->placeholder('Mezuniyet sonrası hedefleriniz')
+                            ->rows(2),
+                    ])->columns(1),
+            ])
+            ->collapsible()
+            ->collapsed(true),
+            // Reference Information / Referans Bilgileri
+            Forms\Components\Section::make('Referans Bilgileri')
+            ->description('Sizi tanıyan kişilere ait referans bilgilerini girin')
+            ->icon('heroicon-o-identification')
+            ->schema([
+                Forms\Components\Grid::make()
+                    ->schema([
+                        Forms\Components\TextInput::make('reference1_name')
+                            ->label('1. Referans Adı')
+                            ->placeholder('1. referansınızın adı soyadı')
+                            ->maxLength(255),
+        
+                                  
+                            PhoneInput::make('reference1_phone')
+                            ->label('1. Referans Telefon')
+                            ->placeholder('1. referansınızın telefon numarası')
+                            ->defaultCountry('tr')
+                            ->initialCountry('tr')
+                           
+                    ])->columns(2),
+                    
+                Forms\Components\Grid::make()
+                    ->schema([
+                        Forms\Components\TextInput::make('reference2_name')
+                            ->label('2. Referans Adı')
+                            ->placeholder('2. referansınızın adı soyadı (varsa)')
+                            ->maxLength(255),
+                            
+    
+                            PhoneInput::make('reference2_phone')
+                            ->label('2. Referans Telefon')
+                            ->placeholder('2. referansınızın telefon numarası (varsa)')
+                            ->defaultCountry('tr')
+                            ->initialCountry('tr')
+                            
+                          
+                    ])->columns(2),
+            ])
+            ->collapsible()
+            ->collapsed(true),
+            // Scholarship Information / Burs Bilgileri
+            Forms\Components\Section::make('Burs Bilgileri')
+            ->description('Burs durumunuz hakkında bilgileri girin')
+            ->icon('heroicon-o-currency-dollar')
+            ->schema([
+                Forms\Components\Grid::make()
+                    ->schema([
+                        Forms\Components\Select::make('receiving_other_scholarship')
+                            ->label('Başka Burs/Kredi Alımı')
+                            ->placeholder('Başka bir yerden burs/kredi alıyor musunuz?')
                             ->options([
-                                'Evet' => 'Evet',
-                                'Hayır' => 'Hayır',
-                            ]),
-                        Forms\Components\Textarea::make('sosyal_medya_kullanimi')
-                            ->label('Sosyal medyayı (Facebook, instagram, linkedin, twitter vb.) ne yoğunlukta kullanıyorsunuz ve hangisini daha çok kullanıyorsunuz?'),
-                        Forms\Components\Textarea::make('sosyal_sorumluluk_projesi')
-                            ->label('Bugüne kadar herhangi bir sosyal sorumluluk projesinde yer aldınız mı? Cevanızı Evet ise; Ne tür bir sosyal sorumluluk projesiydi ve bu projedeki göreviniz neydi? Cevabınız Hayır ise; Bir sosyal sorumluluk projesinde yer almak ister miydiniz? Bu projenin ne tür bir proje olmasını tercih ederdiniz?'),
-                        Forms\Components\Textarea::make('is_hayatinda_basari_gorusu')
-                            ->label('Sizce iş hayatında başarılı olmak için sadece akademik başarı yeterli mi?'),
-                        Forms\Components\Textarea::make('mezuniyet_sonrasi_hedef')
-                            ->label('Mezuniyetinizden 10 yıl sonra kendinizi iş hayatında nerede / hangi pozisyonda görmeyi planlıyorsunuz?'),
+                                'Yes' => 'Evet',
+                                'No' => 'Hayır'
+                            ])
+                            ->live()
+                            ->afterStateUpdated(function ($state, $set) {
+                                if ($state === 'No') {
+                                    $set('other_scholarship_institution', null);
+                                }
+                            }),
+                            
+                        Forms\Components\TextInput::make('other_scholarship_institution')
+                            ->label('Başka Burs/Kredi Kurumu')
+                            ->placeholder('Burs/kredi aldığınız kurum')
+                            ->maxLength(255)
                     ])->columns(2),
-                
-                Forms\Components\Section::make('Referans Bilgileri')
+                    
+                Forms\Components\Grid::make()
                     ->schema([
-                        Forms\Components\TextInput::make('referans1_adi')
-                            ->label('Referans 1 Adı'),
-                        Forms\Components\TextInput::make('referans1_tel')
-                            ->label('Referans 1 Tel No')
-                            ->tel(),
-                        Forms\Components\TextInput::make('referans2_adi')
-                            ->label('Referans 2 Adı'),
-                        Forms\Components\TextInput::make('referans2_tel')
-                            ->label('Referans 2 Tel No')
-                            ->tel(),
-                    ])->columns(2),
-                
-                Forms\Components\Section::make('Burs Bilgileri')
-                    ->schema([
-                        Forms\Components\Select::make('baska_burs_kredi_alimi')
-                            ->label('Başka herhangi bir resmi veya özel kurumdan burs veya kredi alıyor musunuz?')
-                            ->options([
-                                'Evet' => 'Evet',
-                                'Hayır' => 'Hayır',
-                            ]),
-                        Forms\Components\TextInput::make('baska_burs_kredi_kurumu')
-                            ->label('Alıyorsanız nereden?')
-                            ->visible(fn (Forms\Get $get) => $get('baska_burs_kredi_alimi') === 'Evet'),
                         Forms\Components\TextInput::make('iban')
                             ->label('IBAN')
-                            ->placeholder('Örnek: TR123456789012345678901234')
-                            ->maxLength(26),
-                    ])->columns(2),
-                
-                Forms\Components\Section::make('Notlar ve Değerlendirme')
+                            ->placeholder('Banka IBAN numaranız')
+                            ->maxLength(255),
+                    ])->columns(1),
+            ])
+            ->collapsible()
+            ->collapsed(true),
+            // Notes / Notlar
+            Forms\Components\Section::make('Notlar')
+            ->description('Eklemek istediğiniz notları girin')
+            ->icon('heroicon-o-document-text')
+            ->schema([
+                Forms\Components\Grid::make()
                     ->schema([
                         Forms\Components\Textarea::make('notes')
                             ->label('Notlar')
-                            ->columnSpanFull(),
-                        Forms\Components\Textarea::make('rejection_reason')
-                            ->label('Reddetme Sebebi')
-                            ->columnSpanFull()
-                            ->visible(fn (Forms\Get $get) => $get('status') === 'red_edildi'),
-                        Forms\Components\Toggle::make('are_documents_approved')
-                            ->label('Belgeler Onaylandı mı?')
-                            ->default(false),
-                        Forms\Components\Toggle::make('is_interview_completed')
-                            ->label('Mülakat Tamamlandı mı?')
-                            ->default(false),
-                        Forms\Components\DatePicker::make('approval_date')
-                            ->label('Onay Tarihi')
-                            ->visible(fn (Forms\Get $get) => in_array($get('status'), ['kabul_edildi', 'kesin_kabul'])),
-                    ])->columns(2),
-            ]);
+                            ->placeholder('Eklemek istediğiniz notlar')
+                            ->rows(3),
+                    ])->columns(1),
+            ])
+            ->collapsible()
+            ->collapsed(true),
+        ])
+  
+      
+        ->statePath('data')
+        ->model(Applications::class);
     }
+
+    
 
     public static function table(Table $table): Table
     {
@@ -422,54 +929,256 @@ class ApplicationsResource extends Resource
                         if (empty($name)) $name = 'Kullanıcı';
                         return 'https://ui-avatars.com/api/?name=' . urlencode($name) . '&size=128&background=808080&color=ffffff&bold=true&length=2';
                     }),
-                Tables\Columns\TextColumn::make('user.name')
+                Tables\Columns\TextColumn::make('name')
                     ->label('Öğrenci Adı')
                     ->formatStateUsing(fn ($record) => $record->user->name . ' ' . $record->user->surname)
+                    ->default(Auth::user()->name)
                     ->searchable(),
-                Tables\Columns\TextColumn::make('program.name')
-                    ->label('Program')
+                Tables\Columns\TextColumn::make('school_name')
+                    ->label('Okul Adı')
+                 
                     ->searchable(),
-                Tables\Columns\TextColumn::make('status')
+                    Tables\Columns\TextColumn::make('status')
                     ->label('Durum')
                     ->badge()
                     ->formatStateUsing(fn (string $state): string => match ($state) {
-                        'burs_havuzu' => 'Burs Havuzu',
-                        'on_kabul' => 'Ön Kabul',
-                        'red_edildi' => 'Reddedildi',
-                        'evrak_bekleniyor' => 'Evrak Bekleniyor',
-                        'evrak_incelemede' => 'Evrak İncelemede',
-                        'mulakat_havuzu' => 'Mülakat Havuzu',
-                        'mulakat_planlandi' => 'Mülakat Planlandı',
-                        'mulakat_tamamlandi' => 'Mülakat Tamamlandı',
-                        'kabul_edildi' => 'Kabul Edildi',
-                        'kesin_kabul' => 'Kesin Kabul',
-                        'onceki_burslu' => 'Önceki Burslu',
+                        // English status values
+                        'scholarship_pool' => 'Burs Havuzu',
+                        'pre_approved' => 'Ön Kabul',
+                        'rejected' => 'Reddedildi',
+                        'awaiting_documents' => 'Evrak Bekleniyor',
+                        'documents_under_review' => 'Evrak İncelemede',
+                        'interview_pool' => 'Mülakat Havuzu',
+                        'awaiting_evaluation' => 'Değerlendirme Bekleniyor',
+                        'interview_scheduled' => 'Mülakat Planlandı',
+                        'interview_completed' => 'Mülakat Tamamlandı',
+                        'accepted' => 'Kabul Edildi',
+                        'final_acceptance' => 'Kesin Kabul',
+                        'previous_scholar' => 'Önceki Burslu',
+                        
+
+                        'scholarship_pool' => 'Burs Havuzu',
+                        'pre_approved' => 'Ön Kabul',
+                        'rejected' => 'Reddedildi',
+                        'awaiting_documents' => 'Evrak Bekleniyor',
+                        'documents_under_review' => 'Evrak İncelemede',
+                        'interview_pool' => 'Mülakat Havuzu',
+                        'awaiting_evaluation' => 'Değerlendirme Bekleniyor',
+                        'interview_scheduled' => 'Mülakat Planlandı',
+                        'interview_completed' => 'Mülakat Tamamlandı',
+                        'accepted' => 'Kabul Edildi',
+                        'final_acceptance' => 'Kesin Kabul',
+                        'previous_scholar' => 'Önceki Burslu',
+                        // Turkish status values
+                    
                         default => $state,
                     })
                     ->colors([
-                        'warning' => 'burs_havuzu',
-                        'primary' => 'on_kabul',
-                        'danger' => 'red_edildi',
-                        'secondary' => ['evrak_bekleniyor', 'evrak_incelemede'],
-                        'info' => ['mulakat_havuzu', 'mulakat_planlandi'],
-                        'success' => ['mulakat_tamamlandi', 'kabul_edildi', 'kesin_kabul'],
-                        'gray' => 'onceki_burslu',
+                        'danger' => fn ($state) => in_array($state, ['rejected', 'red_edildi', 'Reddedildi']),
+                        'success' => fn ($state) => in_array($state, ['accepted', 'kabul_edildi', 'mulakat_tamamlandi', 'interview_completed', 'final_acceptance', 'previous_scholar', 'dogrulama_tamamlandi', 'Kabul Edildi', 'Mülakat Tamamlandı', 'Doğrulama Tamamlandı', 'Kesin Kabul', 'Önceki Burslu']),
+                        'purple' => fn ($state) => in_array($state, ['interview_scheduled', 'interview_pool', 'interview_scheduled']),
+                        'warning' => fn ($state) => in_array($state, ['awaiting_evaluation', 'belgeler_yuklendi', 'Değerlendirme Bekleniyor', 'Belgeler Yüklendi']),
+                        'primary' => fn ($state) => in_array($state, ['scholarship_pool', 'pre_approved', 'awaiting_documents', 'burs_havuzu', 'on_kabul', 'Burs Havuzu', 'Ön Kabul', 'Evrak Bekleniyor']),
+                        'secondary' => fn ($state) => in_array($state, ['documents_under_review', 'interview_scheduled', 'mulakat_planlandi', 'Evrak İncelemede', 'Mülakat Planlandı']),
                     ]),
-                Tables\Columns\TextColumn::make('okul_adi')
-                    ->label('Üniversite')
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('okul_bolumu')
+                
+                    
+                Tables\Columns\TextColumn::make('school_department')
                     ->label('Bölüm')
-                    ->searchable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\TextColumn::make('sinif')
-                    ->label('Sınıf')
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->searchable(),
                 Tables\Columns\TextColumn::make('application_date')
                     ->label('Başvuru Tarihi')
-                    ->date()
+                    ->dateTime('d.m.Y H:i')
                     ->sortable(),
-                Tables\Columns\IconColumn::make('are_documents_approved')
+
+
+                    
+                Tables\Columns\TextColumn::make('documents_detail')
+                    ->label('Evrak Detayı')
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->formatStateUsing(function ($record) {
+                        try {
+                            // Get program ID
+                            $programId = $record->program_id;
+                            
+                            if (!$programId) {
+                                return '<div class="text-sm text-red-500">Program bilgisi eksik</div>';
+                            }
+                            
+                            // Get required documents
+                            $requiredDocuments = \App\Models\ProgramDocumentRequirement::where('program_id', $programId)
+                                ->with('documentType')
+                                ->get();
+                            
+                            if ($requiredDocuments->isEmpty()) {
+                                return '<div class="text-sm text-yellow-500">Evrak gereksinimi tanımlanmamış</div>';
+                            }
+                            
+                            // User documents
+                            $userDocuments = $record->documents()->with('documentType')->get();
+                            
+                            // Build HTML table for document status
+                            $html = '<div class="text-xs">';
+                            $html .= '<table class="w-full border-collapse">';
+                            $html .= '<thead><tr>';
+                            $html .= '<th class="border-b p-1 text-left">Belge Türü</th>';
+                            $html .= '<th class="border-b p-1 text-center">Durumu</th>';
+                            $html .= '</tr></thead>';
+                            $html .= '<tbody>';
+                            
+                            foreach ($requiredDocuments as $requirement) {
+                                if (!$requirement->documentType) continue;
+                                
+                                $docType = $requirement->documentType;
+                                $userDoc = $userDocuments->first(function($doc) use ($docType) {
+                                    return $doc->document_type_id === $docType->id;
+                                });
+                                
+                                $html .= '<tr>';
+                                $html .= '<td class="border-b p-1 text-left">' . e($docType->name) . '</td>';
+                                
+                                if (!$userDoc) {
+                                    $html .= '<td class="border-b p-1 text-center"><span class="px-1 bg-gray-100 text-gray-800 rounded">Eksik</span></td>';
+                                } else {
+                                    $statusClass = match($userDoc->status) {
+                                        'pending' => 'bg-yellow-100 text-yellow-800',
+                                        'approved' => 'bg-green-100 text-green-800',
+                                        'rejected' => 'bg-red-100 text-red-800',
+                                        default => 'bg-gray-100 text-gray-800'
+                                    };
+                                    
+                                    $statusText = match($userDoc->status) {
+                                        'pending' => 'Beklemede',
+                                        'approved' => 'Onaylı',
+                                        'rejected' => 'Reddedildi',
+                                        default => 'Bilinmiyor'
+                                    };
+                                    
+                                    $html .= '<td class="border-b p-1 text-center"><span class="px-1 rounded ' . $statusClass . '">' . $statusText . '</span></td>';
+                                }
+                                
+                                $html .= '</tr>';
+                            }
+                            
+                            $html .= '</tbody></table></div>';
+                            return $html;
+                            
+                        } catch (\Exception $e) {
+                            return '<div class="text-sm text-red-500">Hata: ' . e($e->getMessage()) . '</div>';
+                        }
+                    })
+                    ->html(),
+
+                Tables\Columns\TextColumn::make('interview_status')
+                    ->label('Mülakat Durumu')
+                    ->formatStateUsing(function ($record) {
+                        $interview = $record->interviews()->first();
+                        if (!$interview) {
+                            return 'Mülakat yapılmadı';
+                        }
+                        
+                        // Turkish translations for interview status
+                        return match ($interview->status) {
+                            'scheduled' => 'Planlandı',
+                            'completed' => 'Tamamlandı',
+                            'canceled' => 'İptal Edildi',
+                            'rescheduled' => 'Yeniden Planlandı',
+                            'no_show' => 'Katılım Olmadı',
+                            'confirmed' => 'Onaylandı',
+                            default => $interview->status,
+                        };
+                    })
+                    ->badge()
+                    ->colors([
+                        'primary' => fn ($state) => $state === 'Planlandı',
+                        'success' => fn ($state) => $state === 'Tamamlandı' || $state === 'Onaylandı',
+                        'danger' => fn ($state) => $state === 'İptal Edildi' || $state === 'Katılım Olmadı',
+                        'warning' => fn ($state) => $state === 'Yeniden Planlandı',
+                        'secondary' => fn ($state) => $state === 'Mülakat yapılmadı',
+                    ]),
+                
+                Tables\Columns\TextColumn::make('interview_detail')
+                    ->label('Mülakat Detayı')
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->formatStateUsing(function ($record) {
+                        try {
+                            $interview = $record->interviews()->first();
+                            
+                            if (!$interview) {
+                                return '<div class="text-sm text-gray-500">Mülakat kaydı bulunamadı</div>';
+                            }
+                            
+                            // Get interviewer info
+                            $interviewer = $interview->interviewer ? $interview->interviewer->name . ' ' . ($interview->interviewer->surname ?? '') : 'Bilinmiyor';
+                            
+                            // Build HTML for interview details
+                            $html = '<div class="text-xs">';
+                            $html .= '<table class="w-full border-collapse">';
+                            
+                            // Status
+                            $statusClass = match($interview->status) {
+                                'scheduled' => 'bg-blue-100 text-blue-800',
+                                'completed' => 'bg-green-100 text-green-800',
+                                'canceled' => 'bg-red-100 text-red-800',
+                                'rescheduled' => 'bg-yellow-100 text-yellow-800',
+                                'no_show' => 'bg-gray-100 text-gray-800',
+                                'confirmed' => 'bg-green-100 text-green-800',
+                                default => 'bg-gray-100 text-gray-800'
+                            };
+                            
+                            $statusText = match($interview->status) {
+                                'scheduled' => 'Planlandı',
+                                'completed' => 'Tamamlandı',
+                                'canceled' => 'İptal Edildi',
+                                'rescheduled' => 'Yeniden Planlandı',
+                                'no_show' => 'Katılım Olmadı',
+                                'confirmed' => 'Onaylandı',
+                                default => $interview->status,
+                            };
+                            
+                            $html .= '<tr><td class="border-b p-1 font-medium">Durum:</td>';
+                            $html .= '<td class="border-b p-1"><span class="px-1 rounded ' . $statusClass . '">' . $statusText . '</span></td></tr>';
+                            
+                            // Date
+                            if ($interview->scheduled_date) {
+                                $html .= '<tr><td class="border-b p-1 font-medium">Tarih:</td>';
+                                $html .= '<td class="border-b p-1">' . $interview->scheduled_date->format('d.m.Y H:i') . '</td></tr>';
+                            }
+                            
+                            // Interviewer
+                            $html .= '<tr><td class="border-b p-1 font-medium">Mülakatçı:</td>';
+                            $html .= '<td class="border-b p-1">' . e($interviewer) . '</td></tr>';
+                            
+                            // Location
+                            if ($interview->location) {
+                                $html .= '<tr><td class="border-b p-1 font-medium">Konum:</td>';
+                                $html .= '<td class="border-b p-1">' . e($interview->location) . '</td></tr>';
+                            }
+                            
+                            // Meeting link (if online)
+                            if ($interview->meeting_link) {
+                                $html .= '<tr><td class="border-b p-1 font-medium">Link:</td>';
+                                $html .= '<td class="border-b p-1"><a href="' . e($interview->meeting_link) . '" target="_blank" class="text-blue-600 underline">Toplantı Linki</a></td></tr>';
+                            }
+                            
+                            // Score (if interview is completed)
+                            if ($interview->status === 'completed' && isset($interview->score)) {
+                                $html .= '<tr><td class="border-b p-1 font-medium">Puan:</td>';
+                                $html .= '<td class="border-b p-1">' . e($interview->score) . '</td></tr>';
+                            }
+                            
+                            $html .= '</table></div>';
+                            return $html;
+                            
+                        } catch (\Exception $e) {
+                            return '<div class="text-sm text-red-500">Hata: ' . e($e->getMessage()) . '</div>';
+                        }
+                    })
+                    ->html(),
+
+               
+               
+                    Tables\Columns\IconColumn::make('are_documents_approved')
                     ->label('Evraklar Onaylı')
                     ->boolean()
                     ->toggleable(isToggledHiddenByDefault: true),
@@ -477,33 +1186,20 @@ class ApplicationsResource extends Resource
                     ->label('Mülakat Tamamlandı')
                     ->boolean()
                     ->toggleable(isToggledHiddenByDefault: true),
+
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Oluşturulma Tarihi')
-                    ->dateTime()
+                    ->dateTime('d.m.Y H:i')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('updated_at')
                     ->label('Güncellenme Tarihi')
-                    ->dateTime()
+                    ->dateTime('d.m.Y H:i')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make('status')
-                    ->label('Durum')
-                    ->options([
-                        'burs_havuzu' => 'Burs Havuzu',
-                        'on_kabul' => 'Ön Kabul',
-                        'red_edildi' => 'Reddedildi',
-                        'evrak_bekleniyor' => 'Evrak Bekleniyor',
-                        'evrak_incelemede' => 'Evrak İncelemede',
-                        'mulakat_havuzu' => 'Mülakat Havuzu',
-                        'mulakat_planlandi' => 'Mülakat Planlandı',
-                        'mulakat_tamamlandi' => 'Mülakat Tamamlandı',
-                        'kabul_edildi' => 'Kabul Edildi',
-                        'kesin_kabul' => 'Kesin Kabul',
-                        'onceki_burslu' => 'Önceki Burslu',
-                    ]),
+         
                 Tables\Filters\SelectFilter::make('program')
                     ->label('Program')
                     ->relationship('program', 'name'),
@@ -525,56 +1221,532 @@ class ApplicationsResource extends Resource
                     ->label('Görüntüle'),
                 Tables\Actions\EditAction::make()
                     ->label('Düzenle'),
-                Tables\Actions\Action::make('review')
-                    ->label('Değerlendir')
-                    ->icon('heroicon-o-clipboard-document-check')
-                    ->url(fn (Applications $record): string => route('filament.admin.resources.applications.edit', ['record' => $record, 'reviewing' => true])),
+                Tables\Actions\DeleteAction::make()
+                    ->color('danger')
+                    ->label('Sil')
+                    ->requiresConfirmation()
+                    ->modalHeading('Başvuru Silme')
+                    ->modalDescription('Bu başvuruyu silmek istediğinizden emin misiniz?')
+                    ->modalSubmitActionLabel('Evet, Sil')
+                    ->modalCancelActionLabel('İptal'),
+                
+                // Tables\Actions\Action::make('viewDocuments')
+                //     ->label('Evrakları Görüntüle')
+                //     ->icon('heroicon-o-document-text')
+                //     ->color('success')
+                //     ->url(fn (Applications $record): string => route('filament.admin.resources.documents.index', ['tableFilters[application_id][value]' => $record->id]))
+                //     ->openUrlInNewTab(),
+                
+                // Yeni Eklenen Aksiyonlar
+                Tables\Actions\Action::make('move_to_interview_pool')
+                    ->visible(false),
+                    
+                // Evrak durumu ile ilgili aksiyonlar
+                Tables\Actions\Action::make('check_documents')
+                    ->label('Evrak Durumu Kontrol')
+                    ->icon('heroicon-o-clipboard-document-list')
+                    ->color('warning')
+                    ->visible(fn (Applications $record): bool => !$record->are_documents_approved)
+                    ->action(function (Applications $record) {
+                        // Program ID'sini al
+                        $programId = $record->program_id;
+                        
+                        // Gerekli belgeleri kontrol et
+                        $requiredDocTypes = \App\Models\ProgramDocumentRequirement::where('program_id', $programId)
+                            ->pluck('document_type_id')
+                            ->toArray();
+                        
+                        if (empty($requiredDocTypes)) {
+                            Notification::make()
+                                ->title('Program için evrak tanımlanmamış')
+                                ->body('Bu program için gerekli evraklar tanımlanmamış.')
+                                ->warning()
+                                ->send();
+                            return;
+                        }
+                        
+                        // Kullanıcı belgelerini al
+                        $userDocTypes = $record->documents()
+                            ->where('status', 'approved')
+                            ->pluck('document_type_id')
+                            ->toArray();
+                        
+                        // Eksik belgeleri bul
+                        $missingDocTypes = array_diff($requiredDocTypes, $userDocTypes);
+                        
+                        if (empty($missingDocTypes)) {
+                            // Tüm belgeler tamamlanmış, durumu güncelle
+                            $record->are_documents_approved = true;
+                            $record->status = 'dogrulama_tamamlandi';
+                            $record->save();
+                            
+                            Notification::make()
+                                ->title('Evraklar Tam')
+                                ->body('Tüm gerekli evraklar onaylanmış. Başvuru mülakat aşamasına geçebilir.')
+                                ->success()
+                                ->send();
+                        } else {
+                            // Eksik belgeler var, kullanıcıya bildir
+                            $missingDocNames = \App\Models\DocumentType::whereIn('id', $missingDocTypes)
+                                ->pluck('name')
+                                ->join(', ');
+                            
+                            Notification::make()
+                                ->title('Eksik Evraklar')
+                                ->body("Aşağıdaki evraklar eksik veya onaylanmamış: $missingDocNames")
+                                ->warning()
+                                ->send();
+                                
+                            // Belgeler eksik, durumu güncelle
+                            $record->status = 'awaiting_documents';
+                            $record->save();
+                        }
+                    }),
+                
+                Tables\Actions\Action::make('invite_to_interview')
+                    ->label(function (Applications $record) {
+                        // Eğer zaten mülakata aktarılmış veya planlama bekleyen bir mülakat varsa
+                        if ($record->status === 'mulakat_havuzu' || 
+                            \App\Models\Interviews::where('application_id', $record->id)
+                                ->where('status', 'awaiting_schedule')
+                                ->exists()) {
+                            return 'Mülakata Aktarıldı ✓';
+                        }
+                        
+                        return 'Mülakata Davet';
+                    })
+                    ->icon('heroicon-o-calendar')
+                    ->color(function (Applications $record) {
+                        // Eğer zaten mülakata aktarılmışsa yeşil göster
+                        if ($record->status === 'mulakat_havuzu' || 
+                            \App\Models\Interviews::where('application_id', $record->id)
+                                ->where('status', 'awaiting_schedule')
+                                ->exists()) {
+                            return 'success';
+                        }
+                        
+                        return 'primary';
+                    })
+                    ->visible(fn (Applications $record): bool => $record->are_documents_approved && !$record->is_interview_scheduled)
+                    ->disabled(function (Applications $record) {
+                        // Eğer zaten mülakata aktarılmışsa veya planlama bekleyen bir mülakat varsa devre dışı bırak
+                        return $record->status === 'mulakat_havuzu' || 
+                               \App\Models\Interviews::where('application_id', $record->id)
+                                ->where('status', 'awaiting_schedule')
+                                ->exists();
+                    })
+                    ->form([
+                        Forms\Components\Select::make('interviewer_id')
+                            ->label('Görüşmeci')
+                            ->options(
+                                \App\Models\User::query()
+                                    ->where('is_admin', true)
+                                    ->get()
+                                    ->pluck('name', 'id')
+                                    ->toArray()
+                            )
+                            ->required()
+                            ->searchable(),
+                        Forms\Components\DateTimePicker::make('interview_date')
+                            ->label('Mülakat Tarihi')
+                            ->seconds(false)
+                            ->displayFormat('d/m/Y H:i')
+                            ->native(false)
+                            ->required(),
+                        Forms\Components\TextInput::make('location')
+                            ->label('Konum')
+                            ->placeholder('Örn: Ana Bina, Oda 203'),
+                        Forms\Components\TextInput::make('meeting_link')
+                            ->label('Görüşme Linki')
+                            ->prefix('https://')
+                            ->placeholder('Zoom veya Google Meet linki'),
+                    ])
+                    ->action(function (Applications $record, array $data) {
+                        // Önce mülakata aktarma işlemini gerçekleştir (eğer henüz aktarılmamışsa)
+                        if ($record->status !== 'mulakat_havuzu') {
+                            // Başvurunun durumunu mülakata aktarılmış olarak güncelle
+                            $record->status = 'mulakat_havuzu';
+                            $record->save();
+                            
+                            // Mülakat kaydı oluştur (awaiting_schedule durumunda)
+                            \App\Models\Interviews::create([
+                                'application_id' => $record->id,
+                                'user_id' => $record->user_id,
+                                'status' => 'awaiting_schedule',
+                                'created_at' => now(),
+                                'interview_date' => now()->addDay(), // Add interview_date field with a default value
+                            ]);
+                            
+                            Notification::make()
+                                ->title('Başvuru mülakata aktarıldı')
+                                ->success()
+                                ->send();
+                        }
+                        
+                        // Mülakatı planla
+                        $interview = \App\Models\Interviews::where('application_id', $record->id)
+                            ->where('status', 'awaiting_schedule')
+                            ->first();
+                        
+                        if (!$interview) {
+                            // Eğer bir şekilde interview kaydı yoksa yeni oluştur
+                            $interview = \App\Models\Interviews::create([
+                                'application_id' => $record->id,
+                                'user_id' => $record->user_id,
+                                'status' => 'awaiting_schedule',
+                                'created_at' => now(),
+                                'interview_date' => now()->addDay(), // Add interview_date field with a default value
+                            ]);
+                        }
+                        
+                        // Mülakat bilgilerini güncelle
+                        $interview->interviewer_admin_id = $data['interviewer_id'];
+                        $interview->scheduled_date = $data['interview_date'];
+                        $interview->location = $data['location'] ?? null;
+                        $interview->meeting_link = $data['meeting_link'] ?? null;
+                        $interview->status = 'scheduled';
+                        $interview->save();
+                        
+                        // Başvuru durumunu güncelle
+                        $record->is_interview_scheduled = true;
+                        $record->status = 'interview_scheduled';
+                        $record->save();
+                        
+                        Notification::make()
+                            ->title('Mülakat başarıyla planlandı')
+                            ->success()
+                            ->send();
+                    }),
+                
+                Tables\Actions\Action::make('complete_interview')
+                    ->label('Mülakatı Tamamla')
+                    ->icon('heroicon-o-check-badge')
+                    ->color('primary')
+                    ->visible(fn (Applications $record): bool => $record->is_interview_scheduled && !$record->is_interview_completed)
+                    ->form([
+                        Forms\Components\Select::make('result')
+                            ->label('Mülakat Sonucu')
+                            ->options([
+                                'passed' => 'Başarılı',
+                                'failed' => 'Başarısız',
+                            ])
+                            ->required(),
+                        Forms\Components\TextInput::make('score')
+                            ->label('Mülakat Puanı (0-100)')
+                            ->numeric()
+                            ->minValue(0)
+                            ->maxValue(100)
+                            ->required(),
+                        Forms\Components\Textarea::make('feedback')
+                            ->label('Geri Bildirim')
+                            ->maxLength(65535)
+                            ->required(),
+                    ])
+                    ->action(function (Applications $record, array $data) {
+                        // En son mülakatı bul ve güncelle
+                        $interview = \App\Models\Interviews::where('application_id', $record->id)
+                            ->where('status', 'scheduled')
+                            ->latest()
+                            ->first();
+                            
+                        if ($interview) {
+                            $interview->status = 'completed';
+                            $interview->interview_result = $data['result'];
+                            $interview->interview_score = $data['score'];
+                            $interview->feedback = $data['feedback'];
+                            $interview->completion_date = now();
+                            $interview->save();
+                        }
+                        
+                        // Başvuru durumunu güncelle
+                        $record->status = $data['result'] === 'passed' ? 'mulakat_tamamlandi' : 'reddedildi';
+                        $record->is_interview_completed = true;
+                        $record->interview_result = $data['result'];
+                        $record->interview_score = $data['score'];
+                        $record->save();
+                        
+                        // Bildirim göster
+                        \Filament\Notifications\Notification::make()
+                            ->title($data['result'] === 'passed' ? 'Mülakat Başarılı' : 'Mülakat Başarısız')
+                            ->body($data['result'] === 'passed' ? 'Mülakat başarıyla tamamlandı.' : 'Mülakat başarısız oldu.')
+                            ->color($data['result'] === 'passed' ? 'success' : 'danger')
+                            ->send();
+                    }),
+                
+                Tables\Actions\Action::make('transfer_scholarship')
+                    ->label('Bursa Aktar')
+                    ->icon('heroicon-o-currency-dollar')
+                    ->color('success')
+                    ->button() // Buton olarak görünsün
+                    ->visible(fn (Applications $record): bool => 
+                        $record->are_documents_approved && 
+                        $record->is_interview_completed && 
+                        $record->interview_result === 'passed' &&
+                        !$record->scholarships()->exists())
+                    ->form([
+                        Forms\Components\Select::make('scholarship_amount')
+                            ->label('Burs Miktarı (₺)')
+                            ->options([
+                                '500' => '500 ₺',
+                                '750' => '750 ₺',
+                                '1000' => '1000 ₺',
+                                '1500' => '1500 ₺',
+                                '2000' => '2000 ₺',
+                                '2500' => '2500 ₺',
+                                '3000' => '3000 ₺',
+                                '3500' => '3500 ₺',
+                                '4000' => '4000 ₺',
+                                '5000' => '5000 ₺',
+                            ])
+                            ->required(),
+                        Forms\Components\DatePicker::make('scholarship_start_date')
+                            ->label('Burs Başlangıç Tarihi')
+                            ->required()
+                            ->minDate(now()),
+                        Forms\Components\DatePicker::make('scholarship_end_date')
+                            ->label('Burs Bitiş Tarihi')
+                            ->required()
+                            ->minDate(function ($get) {
+                                $startDate = $get('scholarship_start_date');
+                                return $startDate ? \Illuminate\Support\Carbon::parse($startDate)->addMonths(1) : now()->addMonths(1);
+                            }),
+                        Forms\Components\Textarea::make('notes')
+                            ->label('Notlar')
+                            ->maxLength(65535),
+                    ])
+                    ->action(function (Applications $record, array $data) {
+                        // Başvuru durumunu güncelle
+                        $record->status = 'kabul_edildi';
+                        $record->approval_date = now();
+                        $record->approval_notes = $data['notes'] ?? null;
+                        $record->scholarship_amount = $data['scholarship_amount'];
+                        $record->scholarship_start_date = $data['scholarship_start_date'];
+                        $record->scholarship_end_date = $data['scholarship_end_date'];
+                        $record->save();
+                        
+                        // Burs kaydı oluştur
+                        \App\Models\Scholarships::create([
+                            'user_id' => $record->user_id,
+                            'program_id' => $record->program_id,
+                            'application_id' => $record->id,
+                            'approved_by' => auth()->id(),
+                            'name' => 'Standart Burs',
+                            'start_date' => \Carbon\Carbon::parse($data['scholarship_start_date'])->format('Y-m-d'),
+                            'end_date' => \Carbon\Carbon::parse($data['scholarship_end_date'])->format('Y-m-d'),
+                            'amount' => (float) $data['scholarship_amount'],
+                            'status' => 'active',
+                            'notes' => $data['notes'] ?? null,
+                        ]);
+                        
+                        // Bildirimi göster
+                        \Filament\Notifications\Notification::make()
+                            ->title('Burs Kaydı Oluşturuldu')
+                            ->body('Başvuru için burs kaydı başarıyla oluşturuldu.')
+                            ->success()
+                            ->send();
+                    })
+                    ->requiresConfirmation()
+                    ->modalHeading('Bursa Aktar')
+                    ->modalDescription('Bu başvuru için burs kaydı oluşturmak üzeresiniz.')
+                    ->modalSubmitActionLabel('Burs Kaydı Oluştur'),
+                
+                Tables\Actions\Action::make('reject_application')
+                    ->label('Reddet')
+                    ->icon('heroicon-o-x-mark')
+                    ->color('danger')
+                    ->form([
+                        Forms\Components\Textarea::make('rejection_reason')
+                            ->label('Ret Sebebi')
+                            ->required(),
+                    ])
+                    ->action(function (Applications $record, array $data) {
+                        $record->status = 'red_edildi';
+                        $record->rejection_reason = $data['rejection_reason'];
+                        $record->rejected_by = auth()->id();
+                        $record->rejected_at = now();
+                        $record->save();
+                        
+                        // Create a notification for the user about the rejection
+                        \App\Models\Notifications::create([
+                            'notifiable_id' => $record->user_id,
+                            'notifiable_type' => \App\Models\User::class,
+                            'title' => 'Başvurunuz Reddedildi',
+                            'message' => 'Başvurunuz değerlendirilmiş ve reddedilmiştir. Red nedeni: ' . $data['rejection_reason'],
+                            'type' => 'application_status',
+                            'application_id' => $record->id,
+                            'is_read' => false,
+                        ]);
+                        
+                        \Filament\Notifications\Notification::make()
+                            ->title('Başvuru Reddedildi')
+                            ->body('Başvuru reddedildi.')
+                            ->danger()
+                            ->send();
+                    })
+                    ->requiresConfirmation()
+                    ->modalHeading('Başvuru reddedilsin mi?')
+                    ->modalDescription('Bu başvuruyu reddetmek istediğinizden emin misiniz? Bu işlem geri alınamaz.')
+                    ->modalSubmitActionLabel('Evet, Reddet'),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make()
                         ->label('Sil'),
-                    Tables\Actions\BulkAction::make('updateStatus')
-                        ->label('Durumu Güncelle')
-                        ->icon('heroicon-o-arrow-path')
+                  
+                    // Yeni eklenen toplu aksiyonlar
+                    Tables\Actions\BulkAction::make('bulk_check_documents')
+                        ->label('Evrak Kontrol')
+                        ->icon('heroicon-o-clipboard-document-list')
+                        ->color('warning')
+                        ->deselectRecordsAfterCompletion()
+                        ->action(function (Collection $records) {
+                            $success = 0;
+                            $missing = 0;
+                            $noRequirements = 0;
+                            
+                            foreach ($records as $record) {
+                                // Program ID'sini al
+                                $programId = $record->program_id;
+                                
+                                // Gerekli belgeleri kontrol et
+                                $requiredDocTypes = \App\Models\ProgramDocumentRequirement::where('program_id', $programId)
+                                    ->pluck('document_type_id')
+                                    ->toArray();
+                                
+                                if (empty($requiredDocTypes)) {
+                                    $noRequirements++;
+                                    continue; // Bu program için belge gereksinimleri bulunmadığından bir sonraki kayda geç
+                                }
+                                
+                                // Kullanıcı belgelerini al
+                                $userDocTypes = $record->documents()
+                                    ->where('status', 'approved')
+                                    ->pluck('document_type_id')
+                                    ->toArray();
+                                
+                                // Eksik belgeleri bul
+                                $missingDocTypes = array_diff($requiredDocTypes, $userDocTypes);
+                                
+                                if (empty($missingDocTypes)) {
+                                    // Tüm belgeler tamamlanmış, durumu güncelle
+                                    $record->are_documents_approved = true;
+                                    $record->status = 'dogrulama_tamamlandi';
+                                    $record->save();
+                                    $success++;
+                                } else {
+                                    // Belgeler eksik, durumu güncelle
+                                    $record->status = 'awaiting_documents';
+                                    $record->save();
+                                    $missing++;
+                                }
+                            }
+                            
+                            $message = "$success başvuru için evraklar tam, $missing başvuru için eksik evrak bulundu.";
+                            if ($noRequirements > 0) {
+                                $message .= " $noRequirements başvuru için evrak gereksinimleri tanımlanmamış.";
+                            }
+                            
+                            \Filament\Notifications\Notification::make()
+                                ->title('Evrak Kontrolü Tamamlandı')
+                                ->body($message)
+                                ->success()
+                                ->send();
+                        }),
+                    
+                    Tables\Actions\BulkAction::make('bulk_move_to_interview_pool')
+                        ->label('Toplu Mülakata Aktar')
+                        ->icon('heroicon-o-arrow-right-circle')
+                        ->color('primary')
+                        ->deselectRecordsAfterCompletion()
+                        ->requiresConfirmation()
+                        ->action(function (Collection $records) {
+                            $moved = 0;
+                            $notMoved = 0;
+                            
+                            foreach ($records as $record) {
+                                if ($record->are_documents_approved && !$record->is_interview_scheduled) {
+                                    $record->status = 'mulakat_havuzu';
+                                    $record->save();
+                                    
+                                    // Ön bir mülakat kaydı oluşturalım ki InterviewManagementResource'da görünsün
+                                    \App\Models\Interviews::create([
+                                        'application_id' => $record->id,
+                                        'user_id' => $record->user_id,
+                                        'interviewer_admin_id' => auth()->id(), // Şimdilik oluşturan kişi
+                                        'status' => 'awaiting_schedule', // Özel durum: Henüz planlanmamış
+                                        'created_at' => now(),
+                                        'interview_date' => now()->addDay(), // Add interview_date field with a default value
+                                        'notes' => 'Bu mülakat henüz planlanmamıştır. Lütfen planlamayı yapın.'
+                                    ]);
+                                    
+                                    $moved++;
+                                } else {
+                                    $notMoved++;
+                                }
+                            }
+                            
+                            \Filament\Notifications\Notification::make()
+                                ->title('Mülakata Aktarıldı')
+                                ->body("$moved başvuru mülakat havuzuna aktarıldı. $notMoved başvuru için evrak onayı eksik veya zaten mülakata aktarılmış.")
+                                ->success()
+                                ->send();
+                        }),
+                        
+                    Tables\Actions\BulkAction::make('bulk_reject')
+                        ->label('Toplu Reddet')
+                        ->icon('heroicon-o-x-mark')
+                        ->color('danger')
                         ->form([
-                            Forms\Components\Select::make('status')
-                                ->label('Durum')
-                                ->options([
-                                    'burs_havuzu' => 'Burs Havuzu',
-                                    'on_kabul' => 'Ön Kabul',
-                                    'red_edildi' => 'Reddedildi',
-                                    'evrak_bekleniyor' => 'Evrak Bekleniyor',
-                                    'evrak_incelemede' => 'Evrak İncelemede',
-                                    'mulakat_havuzu' => 'Mülakat Havuzu',
-                                    'mulakat_planlandi' => 'Mülakat Planlandı',
-                                    'mulakat_tamamlandi' => 'Mülakat Tamamlandı',
-                                    'kabul_edildi' => 'Kabul Edildi',
-                                    'kesin_kabul' => 'Kesin Kabul',
-                                    'onceki_burslu' => 'Önceki Burslu',
-                                ])
+                            Forms\Components\Textarea::make('rejection_reason')
+                                ->label('Ret Sebebi')
                                 ->required(),
                         ])
-                        ->action(function (array $data, Collection $records): void {
+                        ->action(function (Collection $records, array $data) {
                             foreach ($records as $record) {
-                                $record->update([
-                                    'status' => $data['status'],
+                                $record->status = 'red_edildi';
+                                $record->rejection_reason = $data['rejection_reason'];
+                                $record->rejected_by = auth()->id();
+                                $record->rejected_at = now();
+                                $record->save();
+                                
+                                // Create a notification for the user about the rejection
+                                \App\Models\Notifications::create([
+                                    'notifiable_id' => $record->user_id,
+                                    'notifiable_type' => \App\Models\User::class,
+                                    'title' => 'Başvurunuz Reddedildi',
+                                    'message' => 'Başvurunuz değerlendirilmiş ve reddedilmiştir. Red nedeni: ' . $data['rejection_reason'],
+                                    'type' => 'application_status',
+                                    'application_id' => $record->id,
+                                    'is_read' => false,
                                 ]);
                             }
+                            
+                            \Filament\Notifications\Notification::make()
+                                ->title('Başvurular Reddedildi')
+                                ->body(count($records) . ' başvuru reddedildi.')
+                                ->danger()
+                                ->send();
                         })
-                        ->deselectRecordsAfterCompletion(),
+                        ->requiresConfirmation()
+                        ->modalHeading('Başvurular reddedilsin mi?')
+                        ->modalDescription('Seçili başvuruları reddetmek istediğinizden emin misiniz? Bu işlem geri alınamaz.')
+                        ->modalSubmitActionLabel('Evet, Reddet'),
                 ]),
             ]);
     }
-
+  
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()
+            ->with(['documents', 'program', 'user', 'interviews']);
+    }
     public static function getRelations(): array
     {
         return [
-            RelationManagers\DocumentsRelationManager::make(),
-            RelationManagers\InterviewsRelationManager::make(),
+            \App\Filament\Resources\ApplicationsResource\RelationManagers\DocumentsRelationManager::make(),
+            \App\Filament\Resources\ApplicationsResource\RelationManagers\InterviewsRelationManager::make(),
         ];
     }
-
     public static function getPages(): array
     {
         return [

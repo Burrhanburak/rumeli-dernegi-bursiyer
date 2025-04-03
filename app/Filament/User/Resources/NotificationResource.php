@@ -14,6 +14,8 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\Facades\Auth;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Collection;
+use Filament\Notifications\Notification;
 
 class NotificationResource extends Resource
 {
@@ -58,36 +60,55 @@ class NotificationResource extends Resource
                 Tables\Columns\TextColumn::make('title')
                     ->label('Başlık')
                     ->searchable(),
-                Tables\Columns\TextColumn::make('content')
+                Tables\Columns\TextColumn::make('message')
                     ->label('İçerik')
                     ->limit(50)
                     ->searchable(),
-                Tables\Columns\TextColumn::make('type')
+                    Tables\Columns\TextColumn::make('type')
                     ->label('Tür')
                     ->badge()
                     ->formatStateUsing(fn (string $state): string => match ($state) {
+                        'document_required' => 'Belge Gerekli',
+                        'document_approved' => 'Belge Onaylandı',
+                        'document_rejected' => 'Belge Reddedildi',
+                        'document_status' => 'Belge Durumu',
+                        'interview_scheduled' => 'Mülakat Planlandı',
+                        'interview_reminder' => 'Mülakat Hatırlatma',
+                        'application_status' => ' Başvuru Durumu',
+                        'scholarship_awarded' => 'Burs Verildi',
+                        'scholarship_changed' => 'Burs Değişti',
                         'system' => 'Sistem',
-                        'application' => 'Başvuru',
-                        'scholarship' => 'Burs',
-                        'interview' => 'Mülakat',
-                        'document' => 'Belge',
-                        'payment' => 'Ödeme',
                         default => $state,
                     })
+                    ->color(fn (string $state): string => match ($state) {
+                        'document_required' => 'danger',
+                        'document_approved' => 'success',
+                        'document_rejected' => 'danger',
+                        'document_status' => 'warning',
+                        'interview_scheduled' => 'info',
+                        'interview_reminder' => 'warning',
+                        'application_status' => 'danger',
+                        'scholarship_awarded' => 'success',
+                        'scholarship_changed' => 'warning',
+                        'system' => 'secondary',
+                        default => 'secondary',
+                    })
                     ->sortable(),
+                    
                 Tables\Columns\IconColumn::make('is_read')
                     ->label('Okundu')
                     ->boolean()
+                    ->default(true)
                     ->trueIcon('heroicon-o-check-circle')
                     ->falseIcon('heroicon-o-x-circle')
                     ->sortable(),
-                Tables\Columns\TextColumn::make('sent_at')
+                Tables\Columns\TextColumn::make('created_at')
                     ->label('Gönderilme Tarihi')
                     ->dateTime()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('read_at')
                     ->label('Okunma Tarihi')
-                    ->dateTime()
+                    ->dateTime('d.m.Y H:i:s')
                     ->sortable(),
             ])
             ->filters([
@@ -105,6 +126,9 @@ class NotificationResource extends Resource
                         'scholarship' => 'Burs',
                         'interview' => 'Mülakat',
                         'document' => 'Belge',
+                        'document_required' => 'Belge Gerekli',
+                        'document_approved' => 'Belge Onaylandı',  
+                        'document_rejected' => 'Belge Reddedildi',
                         'payment' => 'Ödeme',
                     ]),
             ])
@@ -130,26 +154,43 @@ class NotificationResource extends Resource
                             $record->is_read = true;
                             $record->read_at = now();
                             $record->save();
+                            
+                            // Debug için bilgi eklendi
+                            \Illuminate\Support\Facades\Log::info('Notification marked as read', [
+                                'id' => $record->id,
+                                'read_at' => $record->read_at,
+                                'is_read' => $record->is_read
+                            ]);
                         }
                     })
                     ->visible(fn (Notifications $record): bool => !$record->is_read),
             ])
             ->bulkActions([
-                Tables\Actions\BulkAction::make('mark_all_read')
-                    ->label('Tümünü Okundu İşaretle')
-                    ->icon('heroicon-o-check')
-                    ->action(function ($records) {
-                        foreach ($records as $record) {
-                            if (!$record->is_read) {
-                                $record->is_read = true;
-                                $record->read_at = now();
-                                $record->save();
-                            }
-                        }
-                    }),
+                Tables\Actions\BulkActionGroup::make([
+                    Tables\Actions\BulkAction::make('mark_all_read')
+                        ->label('Tümünü Okundu İşaretle')
+                        ->icon('heroicon-o-check')
+                        ->requiresConfirmation()
+                        ->deselectRecordsAfterCompletion()
+                        ->action(function (Collection $records) {
+                            $records->each(function ($record) {
+                                if (!$record->is_read) {
+                                    $record->is_read = true;
+                                    $record->read_at = now();
+                                    $record->save();
+                                }
+                            });
+                            
+                            Notification::make()
+                                ->title('Tüm seçili bildirimler okundu olarak işaretlendi')
+                                ->success()
+                                ->send();
+                        }),
+                ]),
             ])
-            ->defaultSort('sent_at', 'desc');
+            ->defaultSort('created_at', 'desc');
     }
+
 
     public static function getRelations(): array
     {

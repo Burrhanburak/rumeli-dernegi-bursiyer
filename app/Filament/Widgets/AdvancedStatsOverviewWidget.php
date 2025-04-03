@@ -2,7 +2,7 @@
 
 namespace App\Filament\Widgets;
 
-use App\Models\Application;
+
 use App\Models\Interviews;
 use App\Models\Notifications;
 use App\Models\ScholarshipProgram;
@@ -18,47 +18,45 @@ class AdvancedStatsOverviewWidget extends BaseWidget
     protected function getStats(): array
     {
         return [
-            // Stat::make('Toplam Öğrenciler', Scholarships::count())
-            //     ->icon('heroicon-o-academic-cap')
-            //     ->iconColor('primary'),
-            // Stat::make('Total Applications', Application::count()),
-            // Stat::make('Total Universities', University::count()),
-
-            // Stat::make('Total Users', User::count())->icon('heroicon-o-user')
-        
-            // ->progress(69)
-            // ->progressBarColor('success')
-            // ->iconBackgroundColor('success')
-            // ->chartColor('success')
-            // ->iconPosition('start')
-            // ->description('The users in this period')
-            // ->descriptionIcon('heroicon-o-chevron-up', 'before')
-            // ->descriptionColor('success')
-            // ->iconColor('success'),
-        Stat::make('Toplam Aktiviteler', ActivityLogs::count())->icon('heroicon-o-newspaper')
-            ->description('The posts in this period')
-            ->descriptionIcon('heroicon-o-chevron-up', 'before')               
-            ->descriptionColor('primary')
-            ->iconColor('warning'),
-        Stat::make('Toplam Görüşmeler', Interviews::count())->icon('heroicon-o-chat-bubble-left-ellipsis')
-            ->description("The comments in this period")
-            ->descriptionIcon('heroicon-o-chevron-down', 'before')
-            ->descriptionColor('danger')
-            ->iconColor('danger'),
-        Stat::make('Toplam Bildirimler', Notifications::count())->icon('heroicon-o-bell')
-            ->description("The notifications in this period")
-            ->descriptionIcon('heroicon-o-chevron-up', 'before')
-            ->descriptionColor('success')
-            ->iconColor('primary'),
-        // Stat::make('Toplam Başvurular', Applications::count())->icon('heroicon-o-document-text')
-        //     ->description("The applications in this period")
-        //     ->descriptionIcon('heroicon-o-chevron-up', 'before')
-        //     ->descriptionColor('primary')
-        //     ->iconColor('success'),
-        Stat::make('Toplam Basvuru Programı', ScholarshipProgram::count())
-            ->icon('heroicon-o-building-library')
-            ->description("All universities")
-            ->iconColor('success')
+            Stat::make('Toplam Kullanıcılar', User::count())
+                ->icon('heroicon-o-user')
+                ->iconColor('primary')
+                ->description('Tüm sistem kullanıcıları')
+                ->descriptionIcon('heroicon-o-chevron-up', 'before')
+                ->descriptionColor('primary'),
+                
+            Stat::make('Toplam Başvurular', Applications::count())
+                ->icon('heroicon-o-document-text')
+                ->description('Tüm burs başvuruları')
+                ->descriptionIcon('heroicon-o-chevron-up', 'before')
+                ->descriptionColor('success')
+                ->iconColor('success'),
+                
+            Stat::make('Toplam Burs Programı', ScholarshipProgram::count())
+                ->icon('heroicon-o-building-library')
+                ->description('Aktif burs programları')
+                ->iconColor('warning'),
+                
+            Stat::make('Toplam Görüşmeler', Interviews::count())
+                ->icon('heroicon-o-chat-bubble-left-ellipsis')
+                ->description('Planlanmış görüşmeler')
+                ->descriptionIcon('heroicon-o-chevron-up', 'before')
+                ->descriptionColor('primary')
+                ->iconColor('primary'),
+                
+            // Stat::make('Toplam İşlemler', ActivityLogs::count())
+            //     ->icon('heroicon-o-newspaper')
+            //     ->description('Son yapılan işlemler')
+            //     ->descriptionIcon('heroicon-o-chevron-up', 'before')
+            //     ->descriptionColor('primary')
+            //     ->iconColor('success'),
+                
+            Stat::make('Toplam Bildirimler', Notifications::count())
+                ->icon('heroicon-o-bell')
+                ->description('Sistem bildirimleri')
+                ->descriptionIcon('heroicon-o-chevron-up', 'before')
+                ->descriptionColor('success')
+                ->iconColor('danger'),
         ];
     }
 }

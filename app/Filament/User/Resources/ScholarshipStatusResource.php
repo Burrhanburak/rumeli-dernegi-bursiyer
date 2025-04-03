@@ -86,8 +86,8 @@ class ScholarshipStatusResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-        ->emptyStateHeading('Burs durumunuz bulunamadı')
-        ->emptyStateDescription('Herhangi bir burs durumunuz bulunamadı.')
+        ->emptyStateHeading('Burs durumunuz bulunamadı.')
+        ->emptyStateDescription('Lütfen tum belgelerinizi yukledikten sonra tekrar deneyiniz ve Mülakat sonucunda burs durumunuzu görüntüleyebilirsiniz.')
        
             ->columns([
                 Tables\Columns\TextColumn::make('program.name')

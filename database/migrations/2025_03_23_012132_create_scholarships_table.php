@@ -23,7 +23,7 @@ return new class extends Migration
             $table->date('start_date');
             $table->decimal('amount', 10, 2);
             $table->date('end_date')->nullable();
-            $table->enum('status', ['aktif', 'durduruldu', 'sonlandirildi'])->default('aktif');
+            $table->enum('status', ['active', 'suspended', 'completed', 'terminated'])->default('active');
             $table->text('status_reason')->nullable();
             $table->text('notes')->nullable();
             $table->timestamps();

@@ -24,7 +24,7 @@ use App\Models\User;
 use Filament\Infolists\Infolist;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Infolists\Components\Section;
-
+use App\Models\ScholarshipProgram;
 class ApplicationsResource extends Resource
 {
     protected static ?string $model = Applications::class;
@@ -53,6 +53,19 @@ Forms\Components\Section::make('Kişisel Bilgiler')
 ->description('Başvuru sahibinin kişisel bilgilerini girin')
 ->icon('heroicon-o-user')
 ->schema([
+    // Önce Burs Programı seçimi
+    Forms\Components\Grid::make()
+        ->schema([
+            Forms\Components\Select::make('program_id')
+                ->relationship('program', 'name')
+                ->label('Burs Programı')
+                ->placeholder('Başvurmak istediğiniz burs programını seçin')
+                ->options(ScholarshipProgram::all()->pluck('name', 'id'))
+                ->preload()
+                ->required()
+                ->searchable(),
+        ])->columns(1),
+        
     Forms\Components\Grid::make()
         ->schema([
             Forms\Components\FileUpload::make('image')
@@ -141,10 +154,7 @@ Forms\Components\Section::make('Kişisel Bilgiler')
             ->countrySearch(false)
             ->label('Telefon Numarası')
             ->required()
-            ->unique(User::class, ignoreRecord: true)
-            ->validationMessages([
-                'unique' => 'Bu telefon numarası zaten kayıtlı.'
-            ])
+            ->unique(ignoreRecord: true, column: 'phone')
             ->default(Auth::user()->phone),
          
                 
@@ -841,9 +851,9 @@ Forms\Components\Section::make('Kişisel Bilgiler')
                                 ->label('2. Referans Telefon')
                                 ->placeholder('2. referansınızın telefon numarası (varsa)')
                                 ->defaultCountry('tr')
+                                ->required()
                                 ->initialCountry('tr')
-                                
-                              
+                               
                         ])->columns(2),
                 ])
                 ->collapsible()
@@ -930,10 +940,11 @@ Forms\Components\Section::make('Kişisel Bilgiler')
                     ->date('d.m.Y')
                     ->sortable(),
                     
-                Tables\Columns\TextColumn::make('status')
+                    Tables\Columns\TextColumn::make('status')
                     ->label('Durum')
                     ->badge()
                     ->formatStateUsing(fn (string $state): string => match ($state) {
+                        // English status values
                         'scholarship_pool' => 'Burs Havuzu',
                         'pre_approved' => 'Ön Kabul',
                         'rejected' => 'Reddedildi',
@@ -946,14 +957,16 @@ Forms\Components\Section::make('Kişisel Bilgiler')
                         'accepted' => 'Kabul Edildi',
                         'final_acceptance' => 'Kesin Kabul',
                         'previous_scholar' => 'Önceki Burslu',
+                    
                         default => $state,
                     })
                     ->colors([
-                        'warning' => 'awaiting_evaluation',
-                        'primary' => ['scholarship_pool', 'pre_approved', 'awaiting_documents'],
-                        'secondary' => ['documents_under_review', 'interview_pool', 'interview_scheduled'],
-                        'success' => ['interview_completed', 'accepted', 'final_acceptance', 'previous_scholar'],
-                        'danger' => 'rejected',
+                        'danger' => fn ($state) => in_array($state, ['rejected', 'red_edildi', 'Reddedildi']),
+                        'success' => fn ($state) => in_array($state, ['accepted', 'kabul_edildi', 'mulakat_tamamlandi', 'interview_completed', 'final_acceptance', 'previous_scholar', 'dogrulama_tamamlandi', 'Kabul Edildi', 'Mülakat Tamamlandı', 'Doğrulama Tamamlandı', 'Kesin Kabul', 'Önceki Burslu']),
+                        'purple' => fn ($state) => in_array($state, ['interview_scheduled', 'interview_pool', 'interview_scheduled']),
+                        'warning' => fn ($state) => in_array($state, ['awaiting_evaluation', 'belgeler_yuklendi', 'Değerlendirme Bekleniyor', 'Belgeler Yüklendi']),
+                        'primary' => fn ($state) => in_array($state, ['scholarship_pool', 'pre_approved', 'awaiting_documents', 'burs_havuzu', 'on_kabul', 'Burs Havuzu', 'Ön Kabul', 'Evrak Bekleniyor']),
+                        'secondary' => fn ($state) => in_array($state, ['documents_under_review', 'interview_scheduled', 'mulakat_planlandi', 'Evrak İncelemede', 'Mülakat Planlandı']),
                     ]),
                     
                 Tables\Columns\TextColumn::make('name')
@@ -1031,6 +1044,7 @@ Forms\Components\Section::make('Kişisel Bilgiler')
                             ->label('Başvuru Durumu')
                             ->badge()
                             ->formatStateUsing(fn (string $state): string => match ($state) {
+                                // English status values
                                 'scholarship_pool' => 'Burs Havuzu',
                                 'pre_approved' => 'Ön Kabul',
                                 'rejected' => 'Reddedildi',
@@ -1042,15 +1056,19 @@ Forms\Components\Section::make('Kişisel Bilgiler')
                                 'interview_completed' => 'Mülakat Tamamlandı',
                                 'accepted' => 'Kabul Edildi',
                                 'final_acceptance' => 'Kesin Kabul',
+                                'previous_scholar' => 'Önceki Burslu',
+                            
                                 default => $state,
                             })
                             ->colors([
-                                // Define colors for different statuses
-                                'warning' => 'awaiting_evaluation',
-                                'primary' => ['scholarship_pool', 'pre_approved', 'awaiting_documents'],
-                                'secondary' => ['documents_under_review', 'interview_pool', 'interview_scheduled'],
+                                'danger' => fn ($state) => in_array($state, ['rejected', 'red_edildi', 'Reddedildi']),
+                                'success' => fn ($state) => in_array($state, ['accepted', 'kabul_edildi', 'mulakat_tamamlandi', 'interview_completed', 'final_acceptance', 'previous_scholar', 'dogrulama_tamamlandi', 'Kabul Edildi', 'Mülakat Tamamlandı', 'Doğrulama Tamamlandı', 'Kesin Kabul', 'Önceki Burslu']),
+                                'purple' => fn ($state) => in_array($state, ['interview_scheduled', 'interview_pool', 'interview_scheduled']),
+                                'warning' => fn ($state) => in_array($state, ['awaiting_evaluation', 'belgeler_yuklendi', 'Değerlendirme Bekleniyor', 'Belgeler Yüklendi']),
+                                'primary' => fn ($state) => in_array($state, ['scholarship_pool', 'pre_approved', 'awaiting_documents', 'burs_havuzu', 'on_kabul', 'Burs Havuzu', 'Ön Kabul', 'Evrak Bekleniyor']),
+                                'secondary' => fn ($state) => in_array($state, ['documents_under_review', 'interview_scheduled', 'mulakat_planlandi', 'Evrak İncelemede', 'Mülakat Planlandı']),
                             ]),
-
+                            
                         
                         // Add more fields as needed
                     ])->columns(2),
@@ -1074,6 +1092,13 @@ Forms\Components\Section::make('Kişisel Bilgiler')
             'edit' => Pages\EditApplications::route('/{record}/edit'),
             'view' => Pages\ViewApplication::route('/{record}'),
         ];
+    }
+    
+    public static function getEloquentQuery(): Builder
+    {
+        // Sadece giriş yapmış kullanıcının başvurularını göster
+        return parent::getEloquentQuery()
+            ->where('user_id', auth()->id());
     }
 }
 

@@ -14,6 +14,15 @@ class InterviewsRelationManager extends RelationManager
 {
     protected static string $relationship = 'interviews';
 
+    protected static ?string $navigationLabel = 'Mülakatlar';
+    
+
+    protected static ?string $title = 'Mülakatlar';
+
+    protected static ?string $breadcrumb = 'Mülakatlar';
+
+    protected static ?string $breadcrumbParent = 'Mülakatlar';
+
     public function form(Form $form): Form
     {
         return $form

@@ -5,10 +5,20 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\LogOptions;
 
 class Scholarships extends Model
 {
-    use HasFactory;
+    use HasFactory, LogsActivity;
+    
+    /**
+     * Status enum değerleri
+     */
+    const STATUS_ACTIVE = 'active';
+    const STATUS_SUSPENDED = 'suspended';
+    const STATUS_COMPLETED = 'completed';
+    const STATUS_TERMINATED = 'terminated';
     
     /**
      * The attributes that are mass assignable.
@@ -18,16 +28,16 @@ class Scholarships extends Model
     protected $fillable = [
         'user_id',
         'program_id',
-        'aplication_id',
+        'application_id',
         'approved_by',
         'last_updated_by',
-        'name',
         'start_date',
         'amount',
         'end_date',
         'status',
         'status_reason',
         'notes',
+        'name',
     ];
     
     /**
@@ -40,6 +50,18 @@ class Scholarships extends Model
         'end_date' => 'date',
         'amount' => 'decimal:2',
     ];
+    
+    /**
+     * ActivityLog options
+     */
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['user_id', 'program_id', 'amount', 'status', 'start_date', 'end_date'])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs()
+            ->useLogName('scholarship');
+    }
     
     /**
      * Get the user that received this scholarship.
@@ -79,5 +101,37 @@ class Scholarships extends Model
     public function lastUpdatedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'last_updated_by');
+    }
+    
+    /**
+     * Scope a query to only include active scholarships.
+     */
+    public function scopeActive($query)
+    {
+        return $query->where('status', self::STATUS_ACTIVE);
+    }
+    
+    /**
+     * Scope a query to only include suspended scholarships.
+     */
+    public function scopeSuspended($query)
+    {
+        return $query->where('status', self::STATUS_SUSPENDED);
+    }
+    
+    /**
+     * Scope a query to only include completed scholarships.
+     */
+    public function scopeCompleted($query)
+    {
+        return $query->where('status', self::STATUS_COMPLETED);
+    }
+    
+    /**
+     * Scope a query to only include terminated scholarships.
+     */
+    public function scopeTerminated($query)
+    {
+        return $query->where('status', self::STATUS_TERMINATED);
     }
 }

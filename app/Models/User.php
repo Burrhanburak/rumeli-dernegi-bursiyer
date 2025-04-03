@@ -13,12 +13,22 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Filament\Models\Contracts\HasAvatar;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\LogOptions;
 
-class User extends Authenticatable implements FilamentUser, HasAvatar ,MustVerifyEmail
+class User extends Authenticatable implements FilamentUser, HasAvatar, MustVerifyEmail
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable;
 
+    // public function getActivitylogOptions(): LogOptions
+    // {
+    //     return LogOptions::defaults()
+    //         ->logOnly(['name', 'email', 'is_admin'])
+    //         ->logOnlyDirty()
+    //         ->dontLogIfAttributesChangedOnly(['updated_at'])
+    //         ->dontSubmitEmptyLogs();
+    // }
 
     public function getFilamentAvatarUrl(): ?string
     {
@@ -133,6 +143,8 @@ class User extends Authenticatable implements FilamentUser, HasAvatar ,MustVerif
         'is_active',
         'password',
         'email_verified_at',
+        'otp_code',
+        'otp_expires_at'
     ];
 
     /**
@@ -162,6 +174,18 @@ class User extends Authenticatable implements FilamentUser, HasAvatar ,MustVerif
         ];
     }
 
+    /**
+     * The "booted" method of the model.
+     */
+    protected static function booted(): void
+    {
+        static::saving(function (User $user) {
+            // If user is an admin and email is not verified, automatically verify it
+            if ($user->is_admin && is_null($user->email_verified_at)) {
+                $user->email_verified_at = now();
+            }
+        });
+    }
 
     /**
      * Get the applications for the user.
@@ -271,39 +295,55 @@ class User extends Authenticatable implements FilamentUser, HasAvatar ,MustVerif
      */
     public function canAccessPanel(Panel $panel): bool
     {
-    //     if($panel->getId() === 'admin'){
-    //         return $this->is_admin;
-    //     }
-      
-    //     return str_ends_with($this->email, 'burhanburakozcaan@gmail.com') && $this->hasVerifiedEmail();
-    // }
-    if ($panel->getId() === 'admin') {
-        return str_ends_with($this->email, 'burhanburakozcaan@gmail.com') && $this->hasVerifiedEmail();
+        if ($panel->getId() === 'admin') {
+            return str_ends_with($this->email, 'burhanburakozcaan@gmail.com') && $this->hasVerifiedEmail();
+        }
+    
+        return true;
+    }
+    public function sendEmailVerificationNotification(): void
+    {
+        // Generate OTP
+        $otp = rand(100000, 999999);
+        $this->otp_code = $otp;
+        $this->otp_expires_at = now()->addMinutes(10);
+        $this->save();
+
+        // Send OTP notification
+        $this->notify(new \App\Notifications\OtpNotification($otp));
     }
 
-    return true;
+    public function verifyOtp($otp)
+    {
+        if ($this->otp_code === $otp && now()->lessThan($this->otp_expires_at)) {
+            $this->email_verified_at = now();
+            $this->otp_code = null;
+            $this->otp_expires_at = null;
+            $this->save();
+            return true;
+        }
+        return false;
     }
-    
     /**
      * Override the default verification notification to use our custom Turkish notification
      */
-    public function sendEmailVerificationNotification(): void
-    {
-        // Skip if already verified
-        if ($this->hasVerifiedEmail()) {
-            return;
-        }
+    // public function sendEmailVerificationNotification(): void
+    // {
+    //     // Skip if already verified
+    //     if ($this->hasVerifiedEmail()) {
+    //         return;
+    //     }
         
-        // Set locale to Turkish
-        app()->setLocale('tr');
+    //     // Set locale to Turkish
+    //     app()->setLocale('tr');
         
-        // Log for debugging purposes
-        \Illuminate\Support\Facades\Log::info('Sending verification email to: ' . $this->email);
+    //     // Log for debugging purposes
+    //     \Illuminate\Support\Facades\Log::info('Sending verification email to: ' . $this->email);
         
-        // Create and send notification
-        $notification = app(\App\Notifications\VerifyTestNotification::class, ['token' => '']);
-        $notification->url = \Filament\Facades\Filament::getVerifyEmailUrl($this);
+    //     // Create and send notification
+    //     $notification = app(\App\Notifications\VerifyTestNotification::class, ['token' => '']);
+    //     $notification->url = \Filament\Facades\Filament::getVerifyEmailUrl($this);
         
-        $this->notify($notification);
-    }
+    //     $this->notify($notification);
+    // }
 }

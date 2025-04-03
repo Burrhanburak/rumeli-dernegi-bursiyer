@@ -12,6 +12,46 @@ class BasvuruDagilimGrafigi extends ChartWidget
     protected static ?string $heading = 'Başvuru Durumu Dağılımı';
 
     protected int | string | array $columnSpan = 'full';
+    
+    // Make the chart larger for admin view
+    protected static ?int $sort = 1;
+    
+    protected function getHeight(): ?string
+    {
+        return '400px';
+    }
+
+    // Only show this widget to admins
+    public static function canView(): bool
+    {
+        // Show widget to all authenticated users
+        return auth()->check('is_dmin');
+    }
+
+    // Admin specific configuration
+    protected function getOptions(): array
+    {
+        return [
+            'plugins' => [
+                'legend' => [
+                    'position' => 'right',
+                    'labels' => [
+                        'font' => [
+                            'size' => 14,
+                        ],
+                    ],
+                ],
+                'tooltip' => [
+                    'bodyFont' => [
+                        'size' => 14,
+                    ],
+                    'titleFont' => [
+                        'size' => 16,
+                    ],
+                ],
+            ],
+        ];
+    }
 
     protected function getData(): array
     {

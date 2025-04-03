@@ -211,7 +211,7 @@
                             </p>
                             <div class="mt-10 flex items-center gap-x-6">
                                 @auth
-                                    <a href="{{ url('/dashboard') }}" class="btn btn-primary px-5 py-3">
+                                    <a href="{{ url('user/dashboard') }}" class="btn btn-primary px-5 py-3">
                                         Dashboard'a Git
                                     </a>
                                 @else

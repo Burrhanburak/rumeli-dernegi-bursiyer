@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Carbon;
+use Filament\Notifications\Notification;
 
 class ApplicationPreEvaluationResource extends Resource
 {
@@ -27,18 +28,18 @@ class ApplicationPreEvaluationResource extends Resource
     
     protected static ?int $navigationSort = 1;
     
-    protected static ?string $navigationGroup = 'Başvuru İşlemleri';
+    protected static ?string $navigationGroup = 'Başvuru Yönetimi';
 
-    protected static ?string $title = 'Başvuru Ön Değerlendirme';
+    protected static ?string $title = 'Başvuru Ön Değerlendirmesi';
 
     protected static ?string $breadcrumb = 'Ön Değerlendirme';
 
-    protected static ?string $breadcrumbParent = 'Başvuru İşlemleri';
+    protected static ?string $breadcrumbParent = 'Başvuru Yönetimi';
 
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
-            ->whereIn('status', ['beklemede', 'belgeler_yuklendi', 'dogrulama_bekliyor'])
+            ->whereIn('status', ['awaiting_evaluation', 'belgeler_yuklendi', 'dogrulama_bekliyor', 'beklemede'])
             ->orderBy('updated_at', 'desc');
     }
 
@@ -61,19 +62,33 @@ class ApplicationPreEvaluationResource extends Resource
                             ->preload()
                             ->required(),
                         Forms\Components\TextInput::make('application_number')
-                            ->label('Başvuru Numarası'),
+                            ->label('Başvuru Numarası')
+                            ->placeholder("Örn: BV-00001")
+                            ->helperText("Boş bırakılırsa otomatik oluşturulacaktır"),
                         Forms\Components\DatePicker::make('application_date')
-                            ->label('Başvuru Tarihi'),
+                            ->label('Başvuru Tarihi')
+                            ->default(now()),
                         Forms\Components\Select::make('status')
                             ->label('Durum')
                             ->options([
+                                'awaiting_evaluation' => 'Değerlendirme Bekliyor',
                                 'beklemede' => 'Beklemede',
                                 'belgeler_yuklendi' => 'Belgeler Yüklendi',
                                 'dogrulama_bekliyor' => 'Doğrulama Bekliyor',
                                 'dogrulama_tamamlandi' => 'Doğrulama Tamamlandı',
                                 'burs_havuzu' => 'Başvuru Havuzu',
                                 'on_kabul' => 'Ön Kabul',
+                                'accepted' => 'Kabul Edildi',
                                 'red_edildi' => 'Reddedildi',
+                                'scholarship_pool' => 'Burs Havuzu',
+                                'pre_approved' => 'Ön Kabul',
+                                'rejected' => 'Reddedildi',
+                                'awaiting_documents' => 'Evrak Bekleniyor',
+                                'documents_under_review' => 'Evrak İncelemede',
+                                'interview_pool' => 'Mülakat Havuzu',
+                                'interview_scheduled' => 'Mülakat Planlandı',
+                                'interview_completed' => 'Mülakat Tamamlandı',
+                                'final_acceptance' => 'Kesin Kabul'
                             ]),
                     ])->columns(2),
                 
@@ -103,6 +118,7 @@ class ApplicationPreEvaluationResource extends Resource
                     ->sortable(),
                 Tables\Columns\TextColumn::make('application_number')
                     ->label('Başvuru No')
+                    ->getStateUsing(fn (Applications $record): string => $record->application_number ?: "BV-" . str_pad($record->id, 5, '0', STR_PAD_LEFT))
                     ->searchable()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('user.name')
@@ -120,25 +136,47 @@ class ApplicationPreEvaluationResource extends Resource
                 Tables\Columns\TextColumn::make('status')
                     ->label('Durum')
                     ->badge()
-                    ->color(fn (string $state): string => match ($state) {
-                        'beklemede' => 'gray',
-                        'belgeler_yuklendi' => 'info',
-                        'dogrulama_bekliyor' => 'warning',
-                        'dogrulama_tamamlandi' => 'success',
-                        'burs_havuzu' => 'primary',
-                        'on_kabul' => 'success',
-                        'red_edildi' => 'danger',
-                        default => 'secondary',
-                    })
                     ->formatStateUsing(fn (string $state): string => match ($state) {
+                        'awaiting_evaluation' => 'Değerlendirme Bekliyor',
                         'beklemede' => 'Beklemede',
                         'belgeler_yuklendi' => 'Belgeler Yüklendi',
                         'dogrulama_bekliyor' => 'Doğrulama Bekliyor',
                         'dogrulama_tamamlandi' => 'Doğrulama Tamamlandı',
                         'burs_havuzu' => 'Başvuru Havuzu',
+                        'scholarship_pool' => 'Burs Havuzu',
                         'on_kabul' => 'Ön Kabul',
+                        'pre_approved' => 'Ön Kabul',
                         'red_edildi' => 'Reddedildi',
+                        'rejected' => 'Reddedildi',
+                        'awaiting_documents' => 'Evrak Bekleniyor',
+                        'documents_under_review' => 'Evrak İncelemede',
+                        'interview_pool' => 'Mülakat Havuzu',
+                        'interview_scheduled' => 'Mülakat Planlandı',
+                        'interview_completed' => 'Mülakat Tamamlandı',
+                        'accepted' => 'Kabul Edildi',
+                        'final_acceptance' => 'Kesin Kabul',
                         default => $state,
+                    })
+                    ->color(fn (string $state): string => match ($state) {
+                        'awaiting_evaluation' => 'warning',
+                        'dogrulama_bekliyor' => 'warning',
+                        'beklemede' => 'gray', 
+                        'belgeler_yuklendi' => 'info',
+                        'dogrulama_tamamlandi' => 'success',
+                        'burs_havuzu' => 'primary',
+                        'scholarship_pool' => 'primary',
+                        'awaiting_documents' => 'primary',
+                        'on_kabul' => 'success',
+                        'pre_approved' => 'success',
+                        'red_edildi' => 'danger',
+                        'rejected' => 'danger',
+                        'documents_under_review' => 'secondary',
+                        'interview_pool' => 'secondary',
+                        'interview_scheduled' => 'secondary',
+                        'interview_completed' => 'success',
+                        'accepted' => 'success',
+                        'final_acceptance' => 'success',
+                        default => 'gray',
                     })
                     ->sortable(),
                 Tables\Columns\TextColumn::make('updated_at')
@@ -150,9 +188,15 @@ class ApplicationPreEvaluationResource extends Resource
                 Tables\Filters\SelectFilter::make('status')
                     ->label('Durum')
                     ->options([
+                        'awaiting_evaluation' => 'Değerlendirme Bekliyor',
                         'beklemede' => 'Beklemede',
                         'belgeler_yuklendi' => 'Belgeler Yüklendi',
                         'dogrulama_bekliyor' => 'Doğrulama Bekliyor',
+                        'dogrulama_tamamlandi' => 'Doğrulama Tamamlandı',
+                        'burs_havuzu' => 'Başvuru Havuzu',
+                        'scholarship_pool' => 'Burs Havuzu',
+                        'on_kabul' => 'Ön Kabul',
+                        'pre_approved' => 'Ön Kabul',
                     ]),
                 Tables\Filters\SelectFilter::make('program')
                     ->label('Program')
@@ -215,8 +259,8 @@ class ApplicationPreEvaluationResource extends Resource
                     ->color('success')
                     ->action(function (Applications $record) {
                         $record->status = 'on_kabul';
-                        $record->on_kabul_by = Auth::id();
-                        $record->on_kabul_at = now();
+                        $record->pre_approved_by = Auth::id();
+                        $record->pre_approved_at = now();
                         $record->save();
                     })
                     ->requiresConfirmation()
@@ -224,6 +268,44 @@ class ApplicationPreEvaluationResource extends Resource
                     ->modalDescription('Bu başvuruyu ön kabul etmek istediğinizden emin misiniz?')
                     ->modalSubmitActionLabel('Evet, Ön Kabul Et')
                     ->visible(fn (Applications $record): bool => $record->status === 'dogrulama_tamamlandi' && $record->are_documents_approved),
+                Tables\Actions\Action::make('approve')
+                    ->label('Onayla')
+                    ->icon('heroicon-o-check-circle')
+                    ->color('success')
+                    ->action(function (Applications $record) {
+                        // Belgelerin doğrulanıp doğrulanmadığını kontrol et
+                        if (!$record->are_documents_approved) {
+                            // Belgeler doğrulanmamış, önce doğrula
+                            $record->are_documents_approved = true;
+                        }
+                        
+                        $record->status = 'accepted';
+                        $record->reviewed_by = auth()->id();
+                        $record->reviewed_at = now();
+                        $record->save();
+                        
+                        // Create a notification for the user about the approval
+                        \App\Models\Notifications::create([
+                            'notifiable_id' => $record->user_id,
+                            'notifiable_type' => \App\Models\User::class,
+                            'title' => 'Başvurunuz Kabul Edildi',
+                            'message' => 'Başvurunuz değerlendirilmiş ve kabul edilmiştir.',
+                            'type' => 'application_status',
+                            'application_id' => $record->id,
+                            'is_read' => false,
+                        ]);
+                        
+                        // Başarılı bir şekilde kaydedildiğinde kullanıcıya bir bildirim göster
+                        \Filament\Notifications\Notification::make()
+                            ->title('Başvuru Onaylandı')
+                            ->body('Başvuru başarıyla onaylandı ve Kabul Edilen Başvurular listesine taşındı.')
+                            ->success()
+                            ->send();
+                    })
+                    ->requiresConfirmation()
+                    ->modalHeading('Başvuru onaylansın mı?')
+                    ->modalDescription('Bu başvuruyu onaylamak istediğinizden emin misiniz? Kabul Edilen Başvurular sayfasına taşınacaktır.')
+                    ->modalSubmitActionLabel('Evet, Onayla'),
                 Tables\Actions\Action::make('reject')
                     ->label('Reddet')
                     ->icon('heroicon-o-x-mark')
@@ -235,10 +317,21 @@ class ApplicationPreEvaluationResource extends Resource
                     ])
                     ->action(function (Applications $record, array $data) {
                         $record->status = 'red_edildi';
-                        $record->red_by = Auth::id();
-                        $record->red_at = now();
+                        $record->rejected_by = Auth::id();
+                        $record->rejected_at = now();
                         $record->rejection_reason = $data['rejection_reason'];
                         $record->save();
+                        
+                        // Create a notification for the user about the rejection
+                        \App\Models\Notifications::create([
+                            'notifiable_id' => $record->user_id,
+                            'notifiable_type' => \App\Models\User::class,
+                            'title' => 'Başvurunuz Reddedildi',
+                            'message' => 'Başvurunuz değerlendirilmiş ve reddedilmiştir. Red nedeni: ' . $data['rejection_reason'],
+                            'type' => 'application_status',
+                            'application_id' => $record->id,
+                            'is_read' => false,
+                        ]);
                     })
                     ->requiresConfirmation()
                     ->modalHeading('Başvuru reddedilsin mi?')
@@ -285,8 +378,8 @@ class ApplicationPreEvaluationResource extends Resource
                             foreach ($records as $record) {
                                 if ($record->status === 'dogrulama_tamamlandi' && $record->are_documents_approved) {
                                     $record->status = 'on_kabul';
-                                    $record->on_kabul_by = Auth::id();
-                                    $record->on_kabul_at = now();
+                                    $record->pre_approved_by = Auth::id();
+                                    $record->pre_approved_at = now();
                                     $record->save();
                                 }
                             }
@@ -307,16 +400,66 @@ class ApplicationPreEvaluationResource extends Resource
                         ->action(function (Collection $records, array $data) {
                             foreach ($records as $record) {
                                 $record->status = 'red_edildi';
-                                $record->red_by = Auth::id();
-                                $record->red_at = now();
+                                $record->rejected_by = Auth::id();
+                                $record->rejected_at = now();
                                 $record->rejection_reason = $data['rejection_reason'];
                                 $record->save();
+                                
+                                // Create a notification for the user about the rejection
+                                \App\Models\Notifications::create([
+                                    'notifiable_id' => $record->user_id,
+                                    'notifiable_type' => \App\Models\User::class,
+                                    'title' => 'Başvurunuz Reddedildi',
+                                    'message' => 'Başvurunuz değerlendirilmiş ve reddedilmiştir. Red nedeni: ' . $data['rejection_reason'],
+                                    'type' => 'application_status',
+                                    'application_id' => $record->id,
+                                    'is_read' => false,
+                                ]);
                             }
                         })
                         ->requiresConfirmation()
                         ->modalHeading('Başvurular reddedilsin mi?')
                         ->modalDescription('Seçili başvuruları reddetmek istediğinizden emin misiniz? Bu işlem geri alınamaz.')
                         ->modalSubmitActionLabel('Evet, Reddet'),
+                    Tables\Actions\BulkAction::make('bulk_approve')
+                        ->label('Toplu Onayla')
+                        ->icon('heroicon-o-check-circle')
+                        ->action(function (Collection $records) {
+                            foreach ($records as $record) {
+                                // Belgelerin doğrulanıp doğrulanmadığını kontrol et
+                                if (!$record->are_documents_approved) {
+                                    // Belgeler doğrulanmamış, önce doğrula
+                                    $record->are_documents_approved = true;
+                                }
+                                
+                                $record->status = 'accepted';
+                                $record->reviewed_by = auth()->id();
+                                $record->reviewed_at = now();
+                                $record->save();
+                                
+                                // Create a notification for the user about the approval
+                                \App\Models\Notifications::create([
+                                    'notifiable_id' => $record->user_id,
+                                    'notifiable_type' => \App\Models\User::class,
+                                    'title' => 'Başvurunuz Kabul Edildi',
+                                    'message' => 'Başvurunuz değerlendirilmiş ve kabul edilmiştir.',
+                                    'type' => 'application_status',
+                                    'application_id' => $record->id,
+                                    'is_read' => false,
+                                ]);
+                            }
+                            
+                            // Başarılı bir şekilde kaydedildiğinde kullanıcıya bir bildirim göster
+                            \Filament\Notifications\Notification::make()
+                                ->title('Başvurular Onaylandı')
+                                ->body('Seçili başvurular başarıyla onaylandı ve Kabul Edilen Başvurular listesine taşındı.')
+                                ->success()
+                                ->send();
+                        })
+                        ->requiresConfirmation()
+                        ->modalHeading('Başvurular onaylansın mı?')
+                        ->modalDescription('Seçili başvuruları onaylamak istediğinizden emin misiniz? Kabul Edilen Başvurular sayfasına taşınacaktır.')
+                        ->modalSubmitActionLabel('Evet, Onayla'),
                     Tables\Actions\DeleteBulkAction::make()
                         ->label('Sil'),
                 ]),
@@ -334,7 +477,6 @@ class ApplicationPreEvaluationResource extends Resource
     {
         return [
             'index' => Pages\ListApplicationPreEvaluations::route('/'),
-            'create' => Pages\CreateApplicationPreEvaluation::route('/create'),
             'view' => Pages\ViewApplicationPreEvaluation::route('/{record}'),
             'edit' => Pages\EditApplicationPreEvaluation::route('/{record}/edit'),
         ];

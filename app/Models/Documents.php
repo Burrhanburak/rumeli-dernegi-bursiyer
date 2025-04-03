@@ -41,6 +41,54 @@ class Documents extends Model
     ];
     
     /**
+     * The "booting" method of the model.
+     *
+     * @return void
+     */
+    protected static function boot()
+    {
+        parent::boot();
+        
+        // Otomatik olarak application_id ataması yapalım
+        static::creating(function ($document) {
+            // Eğer application_id zaten ayarlanmışsa, bir şey yapmaya gerek yok
+            if (!empty($document->application_id)) {
+                return;
+            }
+            
+            // Eğer user_id varsa, bu kullanıcının bir başvurusunu bulalım
+            if (!empty($document->user_id)) {
+                $application = \App\Models\Applications::where('user_id', $document->user_id)
+                    ->latest()
+                    ->first();
+                
+                if ($application) {
+                    $document->application_id = $application->id;
+                }
+            }
+        });
+        
+        // Güncelleme durumunda da bu kontrolü yapalım
+        static::updating(function ($document) {
+            // Eğer application_id zaten ayarlanmışsa, bir şey yapmaya gerek yok
+            if (!empty($document->application_id)) {
+                return;
+            }
+            
+            // Eğer user_id varsa, bu kullanıcının bir başvurusunu bulalım
+            if (!empty($document->user_id)) {
+                $application = \App\Models\Applications::where('user_id', $document->user_id)
+                    ->latest()
+                    ->first();
+                
+                if ($application) {
+                    $document->application_id = $application->id;
+                }
+            }
+        });
+    }
+    
+    /**
      * Get the user that owns the document.
      */
     public function user(): BelongsTo

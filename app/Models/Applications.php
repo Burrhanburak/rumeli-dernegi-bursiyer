@@ -8,10 +8,14 @@ use App\Models\User;
 use App\Models\Documents;
 use App\Models\Interviews;
 use App\Models\ScholarshipPrograms;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\LogOptions;
 
 class Applications extends Model
 {
-    use HasFactory;
+    use HasFactory, LogsActivity;
     protected $fillable = [
         'user_id',
         'program_id',
@@ -137,7 +141,13 @@ class Applications extends Model
         'accepted_at',
         'final_acceptance_by',
         'final_acceptance_at',
-        'rejection_reason'
+        'rejection_reason',
+        'reviewed_by',
+        'reviewed_at',
+        'approval_notes',
+        'scholarship_amount',
+        'scholarship_start_date',
+        'scholarship_end_date',
     ];
     
     // Specify which attributes cannot be mass assigned
@@ -294,11 +304,19 @@ class Applications extends Model
     }
     
     /**
+     * Get the reviewer of this application.
+     */
+    public function reviewer()
+    {
+        return $this->belongsTo(User::class, 'reviewed_by');
+    }
+    
+    /**
      * Get the documents associated with this application.
      */
     public function documents()
     {
-        return $this->hasMany(Documents::class, 'application_id', 'application_id');
+        return $this->hasMany(Documents::class, 'application_id');
     }
     
     /**
@@ -306,7 +324,15 @@ class Applications extends Model
      */
     public function interviews()
     {
-        return $this->hasMany(Interviews::class, 'application_id', 'application_id');
+        return $this->hasMany(Interviews::class, 'application_id');
+    }
+    
+    /**
+     * Get the scholarships associated with this application.
+     */
+    public function scholarships()
+    {
+        return $this->hasMany(Scholarships::class, 'application_id');
     }
     
     /**
@@ -331,5 +357,14 @@ class Applications extends Model
         }
         
         return 'User Not Found (ID: ' . $this->user_id . ')';
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['status', 'user_id', 'program_id', 'application_date', 'scholarship_amount'])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs()
+            ->useLogName('application');
     }
 }

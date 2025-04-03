@@ -9,22 +9,33 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use App\Models\DocumentType;
+use App\Models\ProgramDocumentRequirement;
+use Illuminate\Support\Facades\Auth;
 
 class DocumentRequirementsRelationManager extends RelationManager
 {
     protected static string $relationship = 'documentRequirements';
+    
+    protected static ?string $title = 'Evrak Gereksinimleri';
+    protected static ?string $label = 'Evrak Gereksinimi';
+    protected static ?string $pluralLabel = 'Evrak Gereksinimleri';
 
     public function form(Form $form): Form
     {
         return $form
             ->schema([
                 Forms\Components\Select::make('document_type_id')
-                    ->relationship('documentType', 'name')
+                    ->label('Belge Türü')
+                    ->options(DocumentType::pluck('name', 'id'))
                     ->required()
                     ->searchable(),
                 Forms\Components\Toggle::make('is_required')
-                    ->required()
-                    ->default(true),
+                    ->label('Zorunlu mu?')
+                    ->default(true)
+                    ->required(),
+                Forms\Components\Hidden::make('created_by')
+                    ->default(Auth::id()),
             ]);
     }
 
@@ -33,49 +44,36 @@ class DocumentRequirementsRelationManager extends RelationManager
         return $table
             ->recordTitleAttribute('id')
             ->columns([
-                Tables\Columns\TextColumn::make('id')
-                    ->sortable(),
                 Tables\Columns\TextColumn::make('documentType.name')
-                    ->label('Document Type')
+                    ->label('Belge Türü')
                     ->searchable(),
                 Tables\Columns\IconColumn::make('is_required')
-                    ->boolean()
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('creator.name')
-                    ->label('Created by')
-                    ->searchable(),
+                    ->label('Zorunlu')
+                    ->boolean(),
                 Tables\Columns\TextColumn::make('created_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\TextColumn::make('updated_at')
+                    ->label('Oluşturulma Tarihi')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make('is_required')
-                    ->options([
-                        true => 'Required',
-                        false => 'Optional',
-                    ]),
+                //
             ])
             ->headerActions([
                 Tables\Actions\CreateAction::make()
-                    ->mutateFormDataUsing(function (array $data): array {
-                        $data['created_by'] = auth()->id();
-                        return $data;
-                    }),
+                    ->label('Evrak Ekle'),
             ])
             ->actions([
-                Tables\Actions\ViewAction::make(),
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                Tables\Actions\EditAction::make()
+                    ->label('Düzenle'),
+                Tables\Actions\DeleteAction::make()
+                    ->label('Sil'),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                    Tables\Actions\DeleteBulkAction::make()
+                        ->label('Sil'),
                 ]),
             ]);
     }
-} 
+}

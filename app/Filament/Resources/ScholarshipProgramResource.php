@@ -42,47 +42,45 @@ class ScholarshipProgramResource extends Resource
                             ->label('Program Adı')
                             ->required()
                             ->maxLength(255),
-                        Forms\Components\TextInput::make('code')
-                            ->label('Program Kodu')
-                            ->required()
-                            ->maxLength(50)
-                            ->unique(ignoreRecord: true),
-                        Forms\Components\TextInput::make('amount')
+                        Forms\Components\RichEditor::make('description')
+                            ->label('Açıklama')
+                            ->columnSpanFull(),
+                        Forms\Components\TextInput::make('default_amount')
                             ->label('Burs Tutarı')
                             ->numeric()
                             ->prefix('₺')
                             ->required(),
-                        Forms\Components\Select::make('frequency')
-                            ->label('Ödeme Sıklığı')
-                            ->options([
-                                'monthly' => 'Aylık',
-                                'quarterly' => '3 Aylık',
-                                'biannual' => '6 Aylık',
-                                'annual' => 'Yıllık',
-                                'one-time' => 'Tek Seferlik',
-                            ])
-                            ->required(),
-                        Forms\Components\RichEditor::make('description')
-                            ->label('Açıklama')
+                        Forms\Components\TextInput::make('requirements')
+                            ->label('Gereksinimler')
                             ->columnSpanFull(),
-                        Forms\Components\TagsInput::make('eligibility_criteria')
-                            ->label('Uygunluk Kriterleri')
+                        Forms\Components\Textarea::make('notes')
+                            ->label('Notlar')
                             ->columnSpanFull(),
                     ])->columns(2),
                     
                 Forms\Components\Section::make('Tarihler ve Durum')
                     ->schema([
-                        Forms\Components\DatePicker::make('start_date')
-                            ->label('Başlangıç Tarihi')
+                        Forms\Components\DatePicker::make('application_start_date')
+                            ->label('Başvuru Başlangıç Tarihi')
+                            ->native(false)
+                            ->displayFormat('d/m/Y')
                             ->required(),
-                        Forms\Components\DatePicker::make('end_date')
-                            ->label('Bitiş Tarihi')
+                        Forms\Components\DatePicker::make('application_end_date')
+                            ->label('Başvuru Bitiş Tarihi')
+                            ->native(false)
+                            ->displayFormat('d/m/Y')
                             ->required()
-                            ->after('start_date'),
-                        Forms\Components\DatePicker::make('application_deadline')
-                            ->label('Son Başvuru Tarihi')
-                            ->required()
-                            ->beforeOrEqual('start_date'),
+                            ->after('application_start_date'),
+                        Forms\Components\DatePicker::make('program_start_date')
+                            ->label('Program Başlangıç Tarihi')
+                            ->native(false)
+                            ->displayFormat('d/m/Y')
+                            ->required(),
+                        Forms\Components\DatePicker::make('program_end_date')
+                            ->label('Program Bitiş Tarihi')
+                            ->native(false)
+                            ->displayFormat('d/m/Y')
+                            ->after('program_start_date'),
                         Forms\Components\Toggle::make('is_active')
                             ->label('Aktif mi')
                             ->required(),
@@ -90,16 +88,11 @@ class ScholarshipProgramResource extends Resource
                     
                 Forms\Components\Section::make('Kontenjan Bilgisi')
                     ->schema([
-                        Forms\Components\TextInput::make('quota')
-                            ->label('Kontenjan')
+                        Forms\Components\TextInput::make('max_recipients')
+                            ->label('Maksimum Alıcı Sayısı')
                             ->numeric()
-                            ->required(),
-                        Forms\Components\TextInput::make('min_gpa')
-                            ->label('Minimum Not Ortalaması')
-                            ->numeric()
-                            ->step(0.01)
-                            ->minValue(0)
-                            ->maxValue(4.0),
+                            ->nullable(),
+                     
                     ])->columns(2),
             ]);
     }
@@ -118,40 +111,31 @@ class ScholarshipProgramResource extends Resource
                 Tables\Columns\TextColumn::make('name')
                     ->label('Program Adı')
                     ->searchable(),
-                Tables\Columns\TextColumn::make('code')
-                    ->label('Program Kodu')
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('amount')
+                Tables\Columns\TextColumn::make('default_amount')
                     ->label('Tutar')
                     ->money('try')
                     ->sortable(),
-                Tables\Columns\TextColumn::make('frequency')
-                    ->label('Ödeme Sıklığı')
-                    ->formatStateUsing(fn (string $state): string => match ($state) {
-                        'monthly' => 'Aylık',
-                        'quarterly' => '3 Aylık',
-                        'biannual' => '6 Aylık',
-                        'annual' => 'Yıllık',
-                        'one-time' => 'Tek Seferlik',
-                        default => $state,
-                    }),
-                Tables\Columns\TextColumn::make('quota')
+                Tables\Columns\TextColumn::make('max_recipients')
                     ->label('Kontenjan')
                     ->numeric()
                     ->sortable(),
                 Tables\Columns\IconColumn::make('is_active')
                     ->label('Durum')
                     ->boolean(),
-                Tables\Columns\TextColumn::make('application_deadline')
-                    ->label('Son Başvuru')
+                Tables\Columns\TextColumn::make('application_start_date')
+                    ->label('Başvuru Başlangıcı')
                     ->date()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('start_date')
-                    ->label('Başlangıç')
+                Tables\Columns\TextColumn::make('application_end_date')
+                    ->label('Başvuru Bitişi')
                     ->date()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('end_date')
-                    ->label('Bitiş')
+                Tables\Columns\TextColumn::make('program_start_date')
+                    ->label('Program Başlangıcı')
+                    ->date()
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('program_end_date')
+                    ->label('Program Bitişi')
                     ->date()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('created_at')
@@ -172,11 +156,11 @@ class ScholarshipProgramResource extends Resource
                     ->toggle(),
                 Tables\Filters\Filter::make('current')
                     ->label('Güncel Programlar')
-                    ->query(fn (Builder $query): Builder => $query->where('start_date', '<=', now())->where('end_date', '>=', now()))
+                    ->query(fn (Builder $query): Builder => $query->where('program_start_date', '<=', now())->where('program_end_date', '>=', now()))
                     ->toggle(),
                 Tables\Filters\Filter::make('accepting_applications')
                     ->label('Başvuruya Açık')
-                    ->query(fn (Builder $query): Builder => $query->where('application_deadline', '>=', now()))
+                    ->query(fn (Builder $query): Builder => $query->where('application_end_date', '>=', now()))
                     ->toggle(),
             ])
             ->actions([
@@ -197,8 +181,8 @@ class ScholarshipProgramResource extends Resource
     {
         return [
             RelationManagers\ApplicationsRelationManager::make(),
-            RelationManagers\DocumentRequirementsRelationManager::make(),
             RelationManagers\ScholarshipsRelationManager::make(),
+            RelationManagers\DocumentRequirementsRelationManager::make(),
         ];
     }
 

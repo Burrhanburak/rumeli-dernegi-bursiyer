@@ -12,6 +12,7 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use App\Models\User;
 
 class NotificationsResource extends Resource
 {
@@ -37,16 +38,28 @@ class NotificationsResource extends Resource
             ->schema([
                 Forms\Components\Section::make('Bildirim Bilgileri')
                     ->schema([
-                        Forms\Components\Select::make('user_id')
-                            ->relationship('user', 'name')
-                            ->label('Kullanıcı')
-                            ->required()
-                            ->searchable(),
+                        Forms\Components\Select::make('notifiable_type')
+                            ->label('Bildirim Alıcı Tipi')
+                            ->options([
+                                User::class => 'Kullanıcı',
+                            ])
+                            ->default(User::class)
+                            ->required(),
+                        Forms\Components\Select::make('notifiable_id')
+                            ->label('Alıcı')
+                            ->options(function (callable $get) {
+                                $type = $get('notifiable_type');
+                                if (!$type) return [];
+                                
+                                return $type::all()->pluck('name', 'id');
+                            })
+                            ->searchable()
+                            ->required(),
                         Forms\Components\TextInput::make('title')
                             ->label('Başlık')
                             ->required()
                             ->maxLength(255),
-                        Forms\Components\Textarea::make('content')
+                        Forms\Components\Textarea::make('message')
                             ->label('İçerik')
                             ->required()
                             ->maxLength(65535)
@@ -54,24 +67,29 @@ class NotificationsResource extends Resource
                         Forms\Components\Select::make('type')
                             ->label('Tür')
                             ->options([
+                                'document_required' => 'Belge - Belge Gerekli',
+                                'document_approved' => 'Belge - Belge Onaylandı',
+                                'document_rejected' => 'Belge - Belge Reddedildi',
+                                'interview_scheduled' => 'Mülakat - Mülakat Planlandı',
+                                'interview_reminder' => 'Mülakat - Mülakat Hatırlatma',
+                                'application_status' => 'Başvuru - Başvuru Durumu',
+                                'scholarship_awarded' => 'Burs - Burs Verildi',
+                                'scholarship_changed' => 'Burs - Burs Değişti',
                                 'system' => 'Sistem',
-                                'application' => 'Başvuru',
-                                'scholarship' => 'Burs',
-                                'interview' => 'Mülakat',
-                                'document' => 'Belge',
-                                'payment' => 'Ödeme',
                             ])
                             ->required(),
-                        Forms\Components\Toggle::make('is_read')
-                            ->label('Okundu mu')
-                            ->required()
+                        Forms\Components\Checkbox::make('is_read')
+                            ->label('Okundu')
                             ->default(false),
                         Forms\Components\DateTimePicker::make('read_at')
-                            ->label('Okunma Tarihi'),
-                        Forms\Components\DateTimePicker::make('sent_at')
+                            ->label('Okunma Tarihi')
+                            ->displayFormat('d.m.Y H:i:s')
+                            ->default(now())
+                            
+                            ->hidden(),
+                        Forms\Components\DateTimePicker::make('created_at')
                             ->label('Gönderilme Tarihi')
-                            ->required()
-                            ->default(now()),
+                            ->hidden(),
                     ])->columns(2),
             ]);
     }
@@ -89,9 +107,10 @@ class NotificationsResource extends Resource
             ->columns([
                 Tables\Columns\TextColumn::make('id')
                     ->sortable(),
-                Tables\Columns\TextColumn::make('user.name')
-                    ->label('Kullanıcı')
-                    ->searchable(),
+                Tables\Columns\TextColumn::make('notifiable.name')
+                    ->label('Alıcı')
+                    ->searchable()
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('title')
                     ->label('Başlık')
                     ->searchable(),
@@ -99,12 +118,15 @@ class NotificationsResource extends Resource
                     ->label('Tür')
                     ->badge()
                     ->formatStateUsing(fn (string $state): string => match ($state) {
+                        'document_required' => 'Belge Gerekli',
+                        'document_approved' => 'Belge Onaylandı',
+                        'document_rejected' => 'Belge Reddedildi',
+                        'interview_scheduled' => 'Mülakat Planlandı',
+                        'interview_reminder' => 'Mülakat Hatırlatma',
+                        'application_status' => ' Başvuru Durumu',
+                        'scholarship_awarded' => 'Burs Verildi',
+                        'scholarship_changed' => 'Burs Değişti',
                         'system' => 'Sistem',
-                        'application' => 'Başvuru',
-                        'scholarship' => 'Burs',
-                        'interview' => 'Mülakat',
-                        'document' => 'Belge',
-                        'payment' => 'Ödeme',
                         default => $state,
                     })
                     ->sortable(),
@@ -112,23 +134,18 @@ class NotificationsResource extends Resource
                     ->label('Okundu')
                     ->boolean()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('sent_at')
+                Tables\Columns\TextColumn::make('created_at')
                     ->label('Gönderilme Tarihi')
-                    ->dateTime()
+                    ->dateTime('d.m.Y H:i:s')
                     ->sortable(),
                 Tables\Columns\TextColumn::make('read_at')
                     ->label('Okunma Tarihi')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\TextColumn::make('created_at')
-                    ->label('Oluşturulma Tarihi')
-                    ->dateTime()
+                    ->dateTime('d.m.Y H:i:s')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('updated_at')
                     ->label('Güncellenme Tarihi')
-                    ->dateTime()
+                    ->dateTime('d.m.Y H:i:s')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
@@ -142,12 +159,15 @@ class NotificationsResource extends Resource
                 Tables\Filters\SelectFilter::make('type')
                     ->label('Tür')
                     ->options([
+                        'document_required' => 'Belge - Belge Gerekli',
+                        'document_approved' => 'Belge - Belge Onaylandı',
+                        'document_rejected' => 'Belge - Belge Reddedildi',
+                        'interview_scheduled' => 'Mülakat - Mülakat Planlandı',
+                        'interview_reminder' => 'Mülakat - Mülakat Hatırlatma',
+                        'application_status' => 'Başvuru - Başvuru Durumu',
+                        'scholarship_awarded' => 'Burs - Burs Verildi',
+                        'scholarship_changed' => 'Burs - Burs Değişti',
                         'system' => 'Sistem',
-                        'application' => 'Başvuru',
-                        'scholarship' => 'Burs',
-                        'interview' => 'Mülakat',
-                        'document' => 'Belge',
-                        'payment' => 'Ödeme',
                     ]),
             ])
             ->actions([
@@ -155,6 +175,8 @@ class NotificationsResource extends Resource
                     ->label('Görüntüle'),
                 Tables\Actions\EditAction::make()
                     ->label('Düzenle'),
+                Tables\Actions\DeleteAction::make()
+                    ->label('Sil'),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([

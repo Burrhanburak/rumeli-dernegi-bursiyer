@@ -23,5 +23,11 @@ class CreateNotifications extends CreateRecord
     protected static ?string $createButtonTooltip = 'Yeni Bildirim Oluştur';
 
     protected static ?string $createButtonAriaLabel = 'Yeni Bildirim Oluştur';
+
+
+    protected function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl('index');
+    }
     
 }

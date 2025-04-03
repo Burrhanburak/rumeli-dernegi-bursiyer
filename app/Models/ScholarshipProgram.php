@@ -24,7 +24,7 @@ class ScholarshipProgram extends Model
         'application_end_date',
         'program_start_date',
         'program_end_date',
-        'is_active',
+        'status',
         'max_recipients',
         'created_by',
         'requirements',
@@ -42,7 +42,7 @@ class ScholarshipProgram extends Model
         'application_end_date' => 'date',
         'program_start_date' => 'date',
         'program_end_date' => 'date',
-        'is_active' => 'boolean',
+        'status' => 'boolean',
         'max_recipients' => 'integer',
     ];
     
@@ -77,4 +77,23 @@ class ScholarshipProgram extends Model
     {
         return $this->hasMany(ProgramDocumentRequirement::class, 'program_id');
     }
+     
+    public function interviews()
+{
+    return $this->hasMany(Interview::class, 'application_id');
+}public function program()
+{
+    return $this->belongsTo(ScholarshipProgram::class, 'program_id');
+}
+
+public function documents()
+{
+    return $this->hasMany(Documents::class, 'application_id');
+}
+
+public function interview()
+{
+    return $this->hasMany(Interview::class, 'application_id');
+
+}
 }

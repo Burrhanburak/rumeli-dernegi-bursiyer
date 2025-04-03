@@ -18,11 +18,14 @@ class InterviewResource extends Resource
 {
     protected static ?string $model = Interviews::class;
 
+    // Hide this resource from navigation
+    protected static bool $shouldRegisterNavigation = false;
+
     protected static ?string $navigationIcon = 'heroicon-o-user-group';
     
-    protected static ?string $navigationGroup = 'Başvuru Süreci';
+    protected static ?string $navigationGroup = 'Mülakat Yönetimi';
     
-    protected static ?int $navigationSort = 2;
+    protected static ?int $navigationSort = 1;
     
     protected static ?string $navigationLabel = 'Mülakatlar';
 

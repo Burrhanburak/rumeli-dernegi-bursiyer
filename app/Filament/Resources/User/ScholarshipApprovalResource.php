@@ -23,23 +23,29 @@ class ScholarshipApprovalResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-check-badge';
     
-    protected static ?string $navigationLabel = 'Burs Onayları';
+    protected static ?string $navigationLabel = 'Öğrenci Burs Onayları';
     
     protected static ?int $navigationSort = 4;
     
-    protected static ?string $navigationGroup = 'Başvuru İşlemleri';
+    protected static ?string $navigationGroup = 'Burs Yönetimi';
 
-    protected static ?string $title = 'Burs Onayları';
+    protected static ?string $title = 'Öğrenci Burs Onayları';
 
-    protected static ?string $breadcrumb = 'Başvuru İşlemleri';
+    protected static ?string $breadcrumb = 'Burs Yönetimi';
 
     protected static ?string $breadcrumbParent = 'Burs Onayları';
 
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
-            ->where('status', 'mulakat_tamamlandi')
-            ->where('is_interview_completed', true)
+            ->where(function($query) {
+                $query->where('status', 'accepted')
+                    ->orWhere('status', 'interview_completed')
+                    ->orWhere('status', 'mulakat_tamamlandi')
+                    ->orWhere('status', 'on_kabul')
+                    ->orWhere('status', 'pre_approved');
+            })
+            ->whereDoesntHave('scholarships')
             ->orderBy('updated_at', 'desc');
     }
 
@@ -129,6 +135,7 @@ class ScholarshipApprovalResource extends Resource
                 
                 Forms\Components\Section::make('Burs Onayı')
                     ->schema([
+                        
                         Forms\Components\Radio::make('approval_status')
                             ->label('Onay Durumu')
                             ->options([
@@ -205,6 +212,8 @@ class ScholarshipApprovalResource extends Resource
                     ->label('Program')
                     ->searchable()
                     ->sortable(),
+
+               
                 Tables\Columns\TextColumn::make('status')
                     ->label('Durum')
                     ->badge()
@@ -233,16 +242,17 @@ class ScholarshipApprovalResource extends Resource
                         default => $state,
                     })
                     ->sortable(),
-                Tables\Columns\TextColumn::make('interviews.score')
+                Tables\Columns\TextColumn::make('interview_score')
                     ->label('Mülakat Puanı')
                     ->numeric()
-                    ->sortable()
-                    ->summarize([
-                        Tables\Columns\Summarizers\Average::make()
-                            ->label('Ortalama'),
-                        Tables\Columns\Summarizers\Range::make()
-                            ->label('Aralık'),
-                    ]),
+                    ->getStateUsing(function ($record) {
+                        $interview = \App\Models\Interviews::where('application_id', $record->id)
+                            ->where('status', 'completed')
+                            ->first();
+                        
+                        return $interview ? $interview->interview_score : null;
+                    })
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('scholarship_amount')
                     ->label('Burs Miktarı')
                     ->formatStateUsing(fn ($state) => $state ? $state . ' ₺' : '-')
@@ -271,7 +281,7 @@ class ScholarshipApprovalResource extends Resource
                     ->label('Yüksek Puanlı Adaylar')
                     ->query(function (Builder $query) {
                         $query->whereHas('interviews', function ($query) {
-                            $query->where('score', '>=', 80);
+                            $query->where('interview_score', '>=', 80);
                         });
                     })
                     ->toggle(),
@@ -352,11 +362,36 @@ class ScholarshipApprovalResource extends Resource
                         $record->approval_date = Carbon::now();
                         $record->save();
                         
+                        // Create a notification for the user about the scholarship approval
+                        \App\Models\Notifications::create([
+                            'notifiable_id' => $record->user_id,
+                            'notifiable_type' => \App\Models\User::class,
+                            'title' => 'Bursunuz Onaylandı',
+                            'message' => 'Başvurunuz kabul edildi ve bursunuz onaylandı. Burs tutarı: ' . $data['scholarship_amount'] . ' ₺',
+                            'type' => 'application_status',
+                            'application_id' => $record->id,
+                            'is_read' => false,
+                        ]);
+                        
                         // Öğrenci statüsüne yükselt
                         if ($record->user) {
                             $record->user->assignRole('student');
                             $record->user->save();
                         }
+                        
+                        // Burs kaydı oluştur
+                        \App\Models\Scholarships::create([
+                            'user_id' => $record->user_id,
+                            'program_id' => $record->program_id,
+                            'application_id' => $record->id,
+                            'approved_by' => auth()->id(),
+                            'name' => 'Standart Burs',
+                            'start_date' => \Carbon\Carbon::parse($data['scholarship_start_date'])->format('Y-m-d'),
+                            'end_date' => \Carbon\Carbon::parse($data['scholarship_end_date'])->format('Y-m-d'),
+                            'amount' => (float) $data['scholarship_amount'],
+                            'status' => 'active',
+                            'notes' => $data['approval_notes'] ?? null,
+                        ]);
                     }),
                 Tables\Actions\Action::make('reject')
                     ->label('Reddet')
@@ -368,10 +403,22 @@ class ScholarshipApprovalResource extends Resource
                             ->required(),
                     ])
                     ->action(function (Applications $record, array $data) {
-                        $record->status = 'reddedildi';
+                        $record->status = 'red_edildi';
                         $record->rejection_reason = $data['rejection_reason'];
-                        $record->rejection_date = Carbon::now();
+                        $record->rejected_by = auth()->id();
+                        $record->rejected_at = now();
                         $record->save();
+                        
+                        // Create a notification for the user about the rejection
+                        \App\Models\Notifications::create([
+                            'notifiable_id' => $record->user_id,
+                            'notifiable_type' => \App\Models\User::class,
+                            'title' => 'Başvurunuz Reddedildi',
+                            'message' => 'Başvurunuz değerlendirilmiş ve reddedilmiştir. Red nedeni: ' . $data['rejection_reason'],
+                            'type' => 'application_status',
+                            'application_id' => $record->id,
+                            'is_read' => false,
+                        ]);
                     })
                     ->requiresConfirmation()
                     ->modalHeading('Başvuru reddedilsin mi?')
@@ -425,11 +472,36 @@ class ScholarshipApprovalResource extends Resource
                                 $record->approval_date = Carbon::now();
                                 $record->save();
                                 
+                                // Create a notification for the user about the scholarship approval
+                                \App\Models\Notifications::create([
+                                    'notifiable_id' => $record->user_id,
+                                    'notifiable_type' => \App\Models\User::class,
+                                    'title' => 'Bursunuz Onaylandı',
+                                    'message' => 'Başvurunuz kabul edildi ve bursunuz onaylandı. Burs tutarı: ' . $data['scholarship_amount'] . ' ₺',
+                                    'type' => 'application_status',
+                                    'application_id' => $record->id,
+                                    'is_read' => false,
+                                ]);
+                                
                                 // Öğrenci statüsüne yükselt
                                 if ($record->user) {
                                     $record->user->assignRole('student');
                                     $record->user->save();
                                 }
+                                
+                                // Burs kaydı oluştur
+                                \App\Models\Scholarships::create([
+                                    'user_id' => $record->user_id,
+                                    'program_id' => $record->program_id,
+                                    'application_id' => $record->id,
+                                    'approved_by' => auth()->id(),
+                                    'name' => 'Standart Burs',
+                                    'start_date' => \Carbon\Carbon::parse($data['scholarship_start_date'])->format('Y-m-d'),
+                                    'end_date' => \Carbon\Carbon::parse($data['scholarship_end_date'])->format('Y-m-d'),
+                                    'amount' => (float) $data['scholarship_amount'],
+                                    'status' => 'active',
+                                    'notes' => $data['approval_notes'] ?? null,
+                                ]);
                             }
                         })
                         ->requiresConfirmation()
@@ -447,10 +519,22 @@ class ScholarshipApprovalResource extends Resource
                         ])
                         ->action(function (Collection $records, array $data) {
                             foreach ($records as $record) {
-                                $record->status = 'reddedildi';
+                                $record->status = 'red_edildi';
                                 $record->rejection_reason = $data['rejection_reason'];
-                                $record->rejection_date = Carbon::now();
+                                $record->rejected_by = auth()->id();
+                                $record->rejected_at = now();
                                 $record->save();
+                                
+                                // Create a notification for the user about the rejection
+                                \App\Models\Notifications::create([
+                                    'notifiable_id' => $record->user_id,
+                                    'notifiable_type' => \App\Models\User::class,
+                                    'title' => 'Başvurunuz Reddedildi',
+                                    'message' => 'Başvurunuz değerlendirilmiş ve reddedilmiştir. Red nedeni: ' . $data['rejection_reason'],
+                                    'type' => 'application_status',
+                                    'application_id' => $record->id,
+                                    'is_read' => false,
+                                ]);
                             }
                         })
                         ->requiresConfirmation()

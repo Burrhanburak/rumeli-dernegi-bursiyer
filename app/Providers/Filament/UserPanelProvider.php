@@ -27,7 +27,7 @@ use App\Filament\User\Pages\Pages\UserDashboard;
 use App\Filament\User\Widgets\StatsOverview;    
 use App\Filament\User\Pages\Auth\RequestPasswordReset;
 use App\Filament\User\Pages\Auth\EmailVerificationPrompts;
-
+use App\Filament\User\Pages\Auth\OtpVerificationPrompt;
 use Filament\Navigation\MenuItem;
 class UserPanelProvider extends PanelProvider
 {
@@ -69,7 +69,7 @@ class UserPanelProvider extends PanelProvider
             // ->brandLogo(asset('images/logo.svg'))
             ->passwordResetRoutePrefix('password-reset')
             ->passwordReset(RequestPasswordReset::class)
-            ->emailVerification(EmailVerificationPrompts::class)
+            ->emailVerification(OtpVerificationPrompt::class)
             ->colors([
                 'primary' => Color::Emerald,
                 'secondary' => Color::Amber,
@@ -105,6 +105,7 @@ class UserPanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 Authenticate::class,
+                \App\Http\Middleware\RedirectToProperPanelMiddleware::class,
             ])
             ->authGuard('web');
            

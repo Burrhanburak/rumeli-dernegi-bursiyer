@@ -14,6 +14,8 @@ use App\Filament\User\Pages\Auth\Login as FilamentLogin;
 use App\Filament\User\Pages\Auth\Register as FilamentRegister;
 use App\Filament\User\Pages\Auth\RequestPasswordReset as FilamentRequestPasswordReset;
 use App\Filament\User\Pages\Auth\ResetPassword as FilamentResetPassword;
+use App\Http\Controllers\Auth\OtpVerification;
+use Filament\Facades\Filament;
 
 
 
@@ -28,8 +30,17 @@ Route::get('/email/verify/{id}/{hash}', function (EmailVerificationRequest $requ
     session()->regenerate();
     
     // Kullanıcıyı dashboard'a yönlendir
-    return redirect()->intended(route('filament.user.pages.user-dashboard'));
+    return redirect()->intended(Filament::getUrl());
 })->middleware(['auth', 'signed'])->name('verification.verify');
+
+// OTP Verification Route
+Route::get('/otp-verify', OtpVerification::class)
+    ->middleware(['auth'])
+    ->name('otp.verification');
+
+    
+
+
 
 // Route::middleware('guest')->group(function () {
 //     Route::get('login', Login::class)->name('login');

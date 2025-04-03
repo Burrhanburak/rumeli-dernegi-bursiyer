@@ -20,17 +20,24 @@ class InterviewManagementResource extends Resource
 {
     protected static ?string $model = Interviews::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-user-group';
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()
+            ->with(['application', 'interviewer'])
+            ->whereNotNull('application_id');
+    }
+
+    protected static ?string $navigationIcon = 'heroicon-o-user-circle';
     
     protected static ?string $navigationLabel = 'Mülakat Yönetimi';
     
-    protected static ?int $navigationSort = 3;
+    protected static ?int $navigationSort = 2;
     
-    protected static ?string $navigationGroup = 'Başvuru İşlemleri';
+    protected static ?string $navigationGroup = 'Mülakat Yönetimi';
 
     protected static ?string $title = 'Mülakat Yönetimi';
 
-    protected static ?string $breadcrumb = 'Başvuru İşlemleri';
+    protected static ?string $breadcrumb = 'Mülakat Yönetimi';
 
     protected static ?string $breadcrumbParent = 'Mülakat Yönetimi';
 
@@ -71,6 +78,7 @@ class InterviewManagementResource extends Resource
                         Forms\Components\Select::make('status')
                             ->label('Durum')
                             ->options([
+                                'awaiting_schedule' => 'Planlama Bekliyor',
                                 'scheduled' => 'Planlandı',
                                 'completed' => 'Tamamlandı',
                                 'canceled' => 'İptal Edildi',
@@ -134,6 +142,7 @@ class InterviewManagementResource extends Resource
                         'rescheduled' => 'warning',
                         'no_show' => 'gray',
                         'confirmed' => 'primary',
+                        'awaiting_schedule' => 'secondary',
                         default => 'secondary',
                     })
                     ->formatStateUsing(fn (string $state): string => match ($state) {
@@ -143,6 +152,7 @@ class InterviewManagementResource extends Resource
                         'rescheduled' => 'Yeniden Planlandı',
                         'no_show' => 'Katılım Olmadı',
                         'confirmed' => 'Katılım Onaylandı',
+                        'awaiting_schedule' => 'Planlama Bekliyor',
                         default => $state,
                     })
                     ->sortable(),
@@ -169,6 +179,7 @@ class InterviewManagementResource extends Resource
                 Tables\Filters\SelectFilter::make('status')
                     ->label('Durum')
                     ->options([
+                        'awaiting_schedule' => 'Planlama Bekliyor',
                         'scheduled' => 'Planlandı',
                         'completed' => 'Tamamlandı',
                         'canceled' => 'İptal Edildi',
@@ -225,17 +236,45 @@ class InterviewManagementResource extends Resource
                             ->minValue(0)
                             ->maxValue(100)
                             ->required(),
+                        Forms\Components\Select::make('interview_result')
+                            ->label('Mülakat Sonucu')
+                            ->options([
+                                'passed' => 'Başarılı',
+                                'failed' => 'Başarısız',
+                                'pending' => 'Değerlendirmede',
+                            ])
+                            ->required()
+                            ->default('pending'),
                     ])
                     ->action(function (Interviews $record, array $data) {
+                        // Mülakat bilgilerini güncelle
                         $record->status = 'completed';
                         $record->feedback = $data['feedback'];
                         $record->score = $data['score'];
+                        $record->interview_score = $data['score'];
+                        $record->interview_result = $data['interview_result'];
+                        $record->completion_date = now();
                         $record->save();
                         
                         // Başvuru durumunu güncelle
                         if ($record->application) {
-                            $record->application->status = 'mulakat_tamamlandi';
+                            // Mülakat sonucuna göre başvuru durumunu ayarla
+                            if ($data['interview_result'] === 'passed') {
+                                $record->application->status = 'mulakat_tamamlandi';
+                                $record->application->interview_result = 'passed';
+                            } else if ($data['interview_result'] === 'failed') {
+                                $record->application->status = 'red_edildi';
+                                $record->application->interview_result = 'failed';
+                                $record->application->rejection_reason = 'Mülakat başarısız: ' . $data['feedback'];
+                                $record->application->rejected_by = auth()->id();
+                                $record->application->rejected_at = now();
+                            } else {
+                                $record->application->status = 'mulakat_tamamlandi';
+                                $record->application->interview_result = 'pending';
+                            }
+                            
                             $record->application->is_interview_completed = true;
+                            $record->application->interview_score = $data['score'];
                             $record->application->save();
                         }
                     })
@@ -293,22 +332,127 @@ class InterviewManagementResource extends Resource
                         $newInterview->save();
                     })
                     ->visible(fn (Interviews $record): bool => in_array($record->status, ['scheduled', 'confirmed'])),
+                Tables\Actions\Action::make('schedule_interview')
+                    ->label('Planla')
+                    ->icon('heroicon-o-calendar')
+                    ->color('success')
+                    ->form([
+                        Forms\Components\DateTimePicker::make('scheduled_date')
+                            ->label('Mülakat Tarihi ve Saati')
+                            ->required()
+                            ->minDate(now()),
+                        Forms\Components\Select::make('interviewer_id')
+                            ->label('Mülakatçı')
+                            ->options(
+                                \App\Models\User::query()
+                                    ->where('is_admin', true)
+                                    ->get()
+                                    ->pluck('name', 'id')
+                                    ->toArray()
+                            )
+                            ->searchable()
+                            ->required(),
+                        Forms\Components\TextInput::make('location')
+                            ->label('Konum')
+                            ->maxLength(255),
+                        Forms\Components\Toggle::make('is_online')
+                            ->label('Online Mülakat mı?')
+                            ->default(false),
+                        Forms\Components\TextInput::make('meeting_link')
+                            ->label('Toplantı Linki')
+                            ->url()
+                            ->maxLength(255)
+                            ->visible(fn (Forms\Get $get) => $get('is_online')),
+                        Forms\Components\Textarea::make('notes')
+                            ->label('Notlar')
+                            ->maxLength(65535),
+                    ])
+                    ->action(function (Interviews $record, array $data) {
+                        // Mülakat bilgilerini güncelle
+                        $record->status = 'scheduled';
+                        $record->scheduled_date = $data['scheduled_date'];
+                        $record->interviewer_admin_id = $data['interviewer_id'];
+                        $record->location = $data['location'] ?? null;
+                        $record->is_online = $data['is_online'] ?? false;
+                        $record->meeting_link = $data['is_online'] ? $data['meeting_link'] : null;
+                        
+                        // Eski notları sakla
+                        $existingNotes = $record->notes ?? '';
+                        $record->notes = ($data['notes'] ?? '') . "\n\n" . $existingNotes;
+                        $record->save();
+                        
+                        // Başvuru durumunu güncelle
+                        if ($record->application) {
+                            $record->application->status = 'mulakat_planlandi';
+                            $record->application->is_interview_scheduled = true;
+                            $record->application->save();
+                        }
+                        
+                        // Bildirimi göster
+                        \Filament\Notifications\Notification::make()
+                            ->title('Mülakat Planlandı')
+                            ->body('Başvuru için mülakat başarıyla planlandı.')
+                            ->success()
+                            ->send();
+                    })
+                    ->visible(fn (Interviews $record): bool => $record->status === 'awaiting_schedule'),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\BulkAction::make('bulk_complete')
                         ->label('Toplu Tamamla')
                         ->icon('heroicon-o-check-badge')
-                        ->action(function (Collection $records) {
+                        ->form([
+                            Forms\Components\TextInput::make('score')
+                                ->label('Puan (0-100)')
+                                ->numeric()
+                                ->minValue(0)
+                                ->maxValue(100)
+                                ->required(),
+                            Forms\Components\Select::make('interview_result')
+                                ->label('Mülakat Sonucu')
+                                ->options([
+                                    'passed' => 'Başarılı',
+                                    'failed' => 'Başarısız',
+                                    'pending' => 'Değerlendirmede',
+                                ])
+                                ->required()
+                                ->default('pending'),
+                            Forms\Components\Textarea::make('feedback')
+                                ->label('Toplu Geri Bildirim')
+                                ->required(),
+                        ])
+                        ->action(function (Collection $records, array $data) {
                             foreach ($records as $record) {
                                 if (in_array($record->status, ['scheduled', 'confirmed'])) {
+                                    // Mülakat bilgilerini güncelle
                                     $record->status = 'completed';
+                                    $record->feedback = $data['feedback'];
+                                    $record->score = $data['score'];
+                                    $record->interview_score = $data['score'];
+                                    $record->interview_result = $data['interview_result'];
+                                    $record->completion_date = now();
                                     $record->save();
                                     
                                     // Başvuru durumunu güncelle
                                     if ($record->application) {
-                                        $record->application->status = 'mulakat_tamamlandi';
+                                        // Mülakat sonucuna göre başvuru durumunu ayarla
+                                        if ($data['interview_result'] === 'passed') {
+                                            $record->application->status = 'mulakat_tamamlandi';
+                                            $record->application->interview_result = 'passed';
+                                        } else if ($data['interview_result'] === 'failed') {
+                                            $record->application->status = 'red_edildi';
+                                            $record->application->interview_result = 'failed';
+                                            $record->application->rejection_reason = 'Mülakat başarısız: ' . $data['feedback'];
+                                            $record->application->rejected_by = auth()->id();
+                                            $record->application->rejected_at = now();
+                                        } else {
+                                            $record->application->status = 'mulakat_tamamlandi';
+                                            $record->application->interview_result = 'pending';
+                                        }
+                                        
                                         $record->application->is_interview_completed = true;
+                                        $record->application->interview_score = $data['score'];
                                         $record->application->save();
                                     }
                                 }
@@ -327,6 +471,72 @@ class InterviewManagementResource extends Resource
                         }),
                     Tables\Actions\DeleteBulkAction::make()
                         ->label('Sil'),
+                    Tables\Actions\BulkAction::make('bulk_schedule')
+                        ->label('Toplu Planla')
+                        ->icon('heroicon-o-calendar')
+                        ->color('success')
+                        ->form([
+                            Forms\Components\DateTimePicker::make('scheduled_date')
+                                ->label('Mülakat Tarihi ve Saati')
+                                ->required()
+                                ->minDate(now()),
+                            Forms\Components\Select::make('interviewer_id')
+                                ->label('Mülakatçı')
+                                ->options(
+                                    \App\Models\User::query()
+                                        ->where('is_admin', true)
+                                        ->get()
+                                        ->pluck('name', 'id')
+                                        ->toArray()
+                                )
+                                ->searchable()
+                                ->required(),
+                            Forms\Components\TextInput::make('location')
+                                ->label('Konum')
+                                ->maxLength(255),
+                            Forms\Components\Toggle::make('is_online')
+                                ->label('Online Mülakat mı?')
+                                ->default(false),
+                            Forms\Components\TextInput::make('meeting_link')
+                                ->label('Toplantı Linki')
+                                ->url()
+                                ->maxLength(255)
+                                ->visible(fn (Forms\Get $get) => $get('is_online')),
+                            Forms\Components\Textarea::make('notes')
+                                ->label('Notlar')
+                                ->maxLength(65535),
+                        ])
+                        ->action(function (Collection $records, array $data) {
+                            foreach ($records as $record) {
+                                if ($record->status === 'awaiting_schedule') {
+                                    // Mülakat bilgilerini güncelle
+                                    $record->status = 'scheduled';
+                                    $record->scheduled_date = $data['scheduled_date'];
+                                    $record->interviewer_admin_id = $data['interviewer_id'];
+                                    $record->location = $data['location'] ?? null;
+                                    $record->is_online = $data['is_online'] ?? false;
+                                    $record->meeting_link = $data['is_online'] ? $data['meeting_link'] : null;
+                                    
+                                    // Eski notları sakla
+                                    $existingNotes = $record->notes ?? '';
+                                    $record->notes = ($data['notes'] ?? '') . "\n\n" . $existingNotes;
+                                    $record->save();
+                                    
+                                    // Başvuru durumunu güncelle
+                                    if ($record->application) {
+                                        $record->application->status = 'mulakat_planlandi';
+                                        $record->application->is_interview_scheduled = true;
+                                        $record->application->save();
+                                    }
+                                }
+                            }
+                            
+                            \Filament\Notifications\Notification::make()
+                                ->title('Mülakatlar Planlandı')
+                                ->body('Seçili mülakatlar başarıyla planlandı.')
+                                ->success()
+                                ->send();
+                        }),
                 ]),
             ])
             ->defaultSort('scheduled_date', 'asc');

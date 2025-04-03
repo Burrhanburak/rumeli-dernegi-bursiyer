@@ -13,9 +13,9 @@ class ListApplicationPreEvaluations extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            Actions\CreateAction::make()
-                ->label('Yeni Başvuru')
-                ->icon('heroicon-o-plus'),
+            // Actions\CreateAction::make()
+            //     ->label('Yeni Başvuru')
+            //     ->icon('heroicon-o-plus'),
         ];
     }
 

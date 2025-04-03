@@ -20,7 +20,8 @@ class EditApplications extends EditRecord
             Actions\ViewAction::make()
                 ->label('Görüntüle'),
             Actions\DeleteAction::make()
-                ->label('Sil'),
+                ->label('Sil')
+               
         ];
     }
     protected function getFormActions(): array
@@ -36,4 +37,6 @@ class EditApplications extends EditRecord
                 ->color('secondary'),
         ];
     }
+
+    
 }

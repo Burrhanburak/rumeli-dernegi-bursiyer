@@ -24,4 +24,5 @@ class ListScholarshipPrograms extends ListRecords
     protected static ?string $breadcrumb = 'Burs Programları';
 
     protected static ?string $breadcrumbParent = 'Programlar';
+    
 }

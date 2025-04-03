@@ -16,4 +16,22 @@ class CreateScholarshipProgram extends CreateRecord
 
     protected static ?string $breadcrumbParent = 'Programlar';
 
+    protected function getCreateFormAction(): Actions\Action
+    {
+        return parent::getCreateFormAction()
+            ->label('Oluştur');
+    }
+
+    protected function getCreateAnotherFormAction(): Actions\Action
+    {
+        return parent::getCreateAnotherFormAction()
+            ->label('Oluştur ve başka ekle');
+    }
+
+    protected function getCancelFormAction(): Actions\Action
+    {
+        return parent::getCancelFormAction()
+            ->label('İptal');
+    }
+
 }
