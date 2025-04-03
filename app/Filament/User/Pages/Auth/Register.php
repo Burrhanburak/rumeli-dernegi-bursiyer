@@ -28,7 +28,6 @@ use Filament\Http\Responses\Auth\Contracts\RegistrationResponse;
 use Filament\Http\Responses\Auth\Contracts\LoginResponse;
 use DanHarrin\LivewireRateLimiting\Exceptions\TooManyRequestsException;
 use DanHarrin\LivewireRateLimiting\WithRateLimiting;
-use App\Notifications\VerifyTestNotification;
 
 class Register extends BaseRegister 
 {
@@ -297,13 +296,6 @@ class Register extends BaseRegister
 
         event(new Registered($user));
 
-        // E-posta doğrulama bildirimini gönder
-        if ($user instanceof MustVerifyEmail && ! $user->hasVerifiedEmail()) {
-            $notification = app(VerifyTestNotification::class, ['token' => '']);
-            $notification->url = Filament::getVerifyEmailUrl($user);
-            $user->notify($notification);
-        }
-
         Filament::auth()->login($user);
 
         session()->regenerate();
@@ -343,16 +335,9 @@ class Register extends BaseRegister
             return;
         }
 
-        if (! method_exists($user, 'notify')) {
-            $userClass = $user::class;
-
-            throw new Exception("Model [{$userClass}] does not have a [notify()] method.");
-        }
-
-        $notification = app(VerifyTestNotification::class, ['token' => '']);
-        $notification->url = Filament::getVerifyEmailUrl($user);
-
-        $user->notify($notification);
+        // Let the User model handle the OTP generation and sending
+        // This will use the OTP method instead of the link-based verification
+        $user->sendEmailVerificationNotification();
     }
 
     /**

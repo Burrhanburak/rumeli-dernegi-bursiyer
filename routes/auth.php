@@ -18,22 +18,22 @@ use App\Http\Controllers\Auth\OtpVerification;
 use Filament\Facades\Filament;
 
 
+// Disable standard email verification routes
+// Route::get('/email/verify', function () {
+//    return view('auth.verify-email');
+// })->middleware('auth')->name('verification.notice');
 
-Route::get('/email/verify', function () {
-    return view('auth.verify-email');
-})->middleware('auth')->name('verification.notice');
+// Route::get('/email/verify/{id}/{hash}', function (EmailVerificationRequest $request) {
+//    $request->fulfill();
+//    
+//    // Oturumu yenile
+//    session()->regenerate();
+//    
+//    // Kullanıcıyı dashboard'a yönlendir
+//    return redirect()->intended(Filament::getUrl());
+// })->middleware(['auth', 'signed'])->name('verification.verify');
 
-Route::get('/email/verify/{id}/{hash}', function (EmailVerificationRequest $request) {
-    $request->fulfill();
-    
-    // Oturumu yenile
-    session()->regenerate();
-    
-    // Kullanıcıyı dashboard'a yönlendir
-    return redirect()->intended(Filament::getUrl());
-})->middleware(['auth', 'signed'])->name('verification.verify');
-
-// OTP Verification Route
+// Only keep OTP Verification Route
 Route::get('/otp-verify', OtpVerification::class)
     ->middleware(['auth'])
     ->name('otp.verification');

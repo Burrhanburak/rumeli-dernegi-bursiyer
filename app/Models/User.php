@@ -185,6 +185,28 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, MustVerif
                 $user->email_verified_at = now();
             }
         });
+        
+        // Clean up expired OTP session flags
+        self::cleanupExpiredOtpFlags();
+    }
+
+    /**
+     * Clean up expired OTP session flags
+     */
+    protected static function cleanupExpiredOtpFlags(): void
+    {
+        $session = session();
+        
+        foreach ($session->all() as $key => $value) {
+            if (strpos($key, 'otp_sent_') === 0) {
+                $expiresKey = $key . '_expires';
+                
+                if ($session->has($expiresKey) && $session->get($expiresKey) < now()->timestamp) {
+                    $session->forget($key);
+                    $session->forget($expiresKey);
+                }
+            }
+        }
     }
 
     /**
@@ -303,14 +325,36 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, MustVerif
     }
     public function sendEmailVerificationNotification(): void
     {
+        // Use a session flag to prevent duplicate emails
+        $sessionKey = 'otp_sent_' . $this->id;
+        
+        if (session()->has($sessionKey)) {
+            \Illuminate\Support\Facades\Log::info('Duplicate OTP prevented', [
+                'user_id' => $this->id,
+                'email' => $this->email
+            ]);
+            return;
+        }
+        
+        // Debug logging
+        \Illuminate\Support\Facades\Log::info('OTP Verification Triggered', [
+            'user_id' => $this->id,
+            'email' => $this->email,
+            'trace' => debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 5)
+        ]);
+        
         // Generate OTP
         $otp = rand(100000, 999999);
         $this->otp_code = $otp;
         $this->otp_expires_at = now()->addMinutes(10);
         $this->save();
 
-        // Send OTP notification
+        // Send OTP notification only
         $this->notify(new \App\Notifications\OtpNotification($otp));
+        
+        // Set the session flag for 1 minute to prevent duplicate emails
+        session()->put($sessionKey, true);
+        session()->put($sessionKey . '_expires', now()->addMinute()->timestamp);
     }
 
     public function verifyOtp($otp)

@@ -7,8 +7,6 @@ use Filament\Tables\Table;
 use Illuminate\Support\ServiceProvider;
 use Filament\Support\Facades\FilamentLabel;
 use Illuminate\Support\Facades\URL;
-use App\Listeners\SendEmailVerificationNotification;
-use Illuminate\Auth\Events\Registered;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
 use Illuminate\Auth\Events\Failed;
@@ -22,11 +20,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        // We no longer need this binding since we're overriding the method in the User model
-        $this->app->bind(
-            \Illuminate\Auth\Listeners\SendEmailVerificationNotification::class,
-            \App\Listeners\SendEmailVerificationNotification::class
-        );
+        // Remove this binding completely as we're using OTP verification
+        // $this->app->bind(
+        //     \Illuminate\Auth\Listeners\SendEmailVerificationNotification::class,
+        //     \App\Listeners\SendEmailVerificationNotification::class
+        // );
         
         // Admin ve kullanıcı panelleri için özel login response sınıflarını bağlama
         

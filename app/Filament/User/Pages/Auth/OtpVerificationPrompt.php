@@ -12,6 +12,7 @@ use Filament\Actions\Action;
 use Filament\Forms\Form;
 use Filament\Notifications\Auth\VerifyEmail;
 use Filament\Pages\Auth\EmailVerification\EmailVerificationPrompt;
+use App\Notifications\OtpNotification;
 
 use Filament\Pages\SimplePage;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
@@ -55,7 +56,7 @@ class OtpVerificationPrompt extends EmailVerificationPrompt
         $user->save();
 
         // Send OTP notification
-        $user->notify(new \App\Notifications\OtpNotification($otp));
+        $user->notify(new OtpNotification($otp));
     }
 
     public function getHeading(): string | Htmlable
@@ -177,5 +178,4 @@ class OtpVerificationPrompt extends EmailVerificationPrompt
             ->danger();
     }
 }
-
 

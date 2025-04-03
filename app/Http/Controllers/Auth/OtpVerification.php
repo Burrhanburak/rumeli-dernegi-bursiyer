@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Notifications\OtpNotification;
 use Illuminate\Http\Request;
 use Livewire\Component;
 
@@ -29,7 +30,7 @@ class OtpVerification extends Component
         $user->otp_code = $otp;
         $user->otp_expires_at = now()->addMinutes(10);
         $user->save();
-        $user->notify(new \App\Notifications\OtpNotification($otp));
+        $user->notify(new OtpNotification($otp));
         session()->flash('message', 'Yeni OTP gönderildi.');
     }
 
