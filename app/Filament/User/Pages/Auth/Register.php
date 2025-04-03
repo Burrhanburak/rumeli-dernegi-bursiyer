@@ -207,20 +207,21 @@ class Register extends BaseRegister
     }
 
     protected function getPhoneFormComponent(): Component
-    {
-        return PhoneInput::make('phone')
-            ->defaultCountry('tr')
-            ->initialCountry('tr')
-            ->locale('tr')
-            ->countrySearch(false)
-            ->label('Telefon Numarası')
-            ->required()
-            ->unique(User::class)
-            ->validationMessages([
-                'unique' => 'Bu telefon numarası zaten kayıtlı.'
-            ]);
-          
-    }
+{
+    return PhoneInput::make('phone')
+        ->defaultCountry('tr')
+        ->initialCountry('tr')
+        ->locale('tr')
+        ->countrySearch(false)
+        ->label('Telefon Numarası')
+        ->required()
+        ->unique(User::class, ignoreRecord: true)
+        ->rules(['phone:TR']) // Telefon numarasının geçerli bir Türk numarası olmasını sağlar
+        ->validationMessages([
+            'unique' => 'Bu telefon numarası zaten kayıtlı.',
+            'phone' => 'Lütfen geçerli bir telefon numarası girin.'
+        ]);
+}
 
     protected function getTermsCheckboxComponent(): Component
     {
