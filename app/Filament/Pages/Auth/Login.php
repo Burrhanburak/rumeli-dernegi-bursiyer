@@ -104,6 +104,7 @@ class Login extends AdminLogin
     {
         return TextInput::make('password')
             ->label(__('Şifre'))
+            ->revealable()
             ->placeholder('Şifrenizi giriniz')
             ->validationMessages([
                 'password.required' => 'Şifre alanı zorunludur.',

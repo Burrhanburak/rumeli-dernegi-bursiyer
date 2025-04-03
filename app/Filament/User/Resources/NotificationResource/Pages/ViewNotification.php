@@ -79,7 +79,6 @@ class ViewNotification extends ViewRecord
                             ->dateTime('d.m.Y H:i:s'),
                         Infolists\Components\TextEntry::make('read_at')
                             ->label('Okunma Tarihi')
-                            ->default(now())
                             ->dateTime('d.m.Y H:i:s'),
                     ])
                     ->columns(2),

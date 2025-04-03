@@ -19,9 +19,9 @@ class ListInterviewManagement extends ListRecords
         ];
     }
 
-    protected static ?string $title = 'Mülakat Yönetimi';
+    protected static ?string $title = 'Mülakat Havuzu';
 
-    protected static ?string $breadcrumb = 'Mülakat Yönetimi';
+    protected static ?string $breadcrumb = 'Mülakat Havuzu';
 
-    protected static ?string $breadcrumbParent = 'Mülakat Yönetimi';
+    protected static ?string $breadcrumbParent = 'Mülakat Havuzu';
 }

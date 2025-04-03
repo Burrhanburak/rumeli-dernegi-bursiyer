@@ -40,20 +40,32 @@ class ListApplications extends ListRecords
                 ,
             'pending' => Tab::make()
                 ->label('Bekleyen Başvurular')
-           
                 ->icon('heroicon-o-clock')
-                ->badge(ApplicationsResource::getModel()::where('user_id', $userId)->where('status', 'awaiting_evaluation')->count())
+                ->badge(ApplicationsResource::getModel()::where('user_id', $userId)->where(function($query) {
+                    $query->where('status', 'awaiting_evaluation')
+                          ->orWhere('status', 'beklemede')
+                          ->orWhere('status', 'bekleniyor')
+                          ->orWhere('status', 'incelemede');
+                })->count())
                 ->badgeColor('gray')
-                ->modifyQueryUsing(fn ($query) => $query->where('user_id', $userId)->where('status', 'awaiting_evaluation'))
-
-               ,
-            'approved' => Tab::make()
+                ->modifyQueryUsing(fn ($query) => $query->where('user_id', $userId)->where(function($query) {
+                    $query->where('status', 'awaiting_evaluation')
+                          ->orWhere('status', 'beklemede')
+                          ->orWhere('status', 'bekleniyor')
+                          ->orWhere('status', 'incelemede');
+                })),
+            'accepted' => Tab::make()
                 ->label('Onaylı Başvurular')
                 ->icon('heroicon-o-check-circle')
-                ->badge(ApplicationsResource::getModel()::where('user_id', $userId)->where('status', 'accepted')->count())
+                ->badge(ApplicationsResource::getModel()::where('user_id', $userId)->where(function($query) {
+                    $query->where('status', 'accepted')
+                          ->orWhere('status', 'kabul_edildi');
+                })->count())
                 ->badgeColor('gray')
-                ->modifyQueryUsing(fn ($query) => $query->where('user_id', $userId)->where('status', 'accepted')),
-               
+                ->modifyQueryUsing(fn ($query) => $query->where('user_id', $userId)->where(function($query) {
+                    $query->where('status', 'accepted')
+                          ->orWhere('status', 'kabul_edildi');
+                })),
             'rejected' => Tab::make()
                 ->label('Reddedilen Başvurular')
                 ->icon('heroicon-o-x-circle')
@@ -72,13 +84,7 @@ class ListApplications extends ListRecords
                           ->orWhereNotNull('rejected_at')
                           ->orWhereNotNull('rejected_by');
                 })),
-            'completed' => Tab::make()
-                ->label('Tamamlanan Başvurular')
-                ->icon('heroicon-o-check')
-                ->badge(ApplicationsResource::getModel()::where('user_id', $userId)->where('status', 'completed')->count())
-                ->badgeColor('gray')
-                ->modifyQueryUsing(fn ($query) => $query->where('user_id', $userId)->where('status', 'completed')),
-              
+       
             
         ];
     }

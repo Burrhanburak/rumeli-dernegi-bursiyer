@@ -220,12 +220,78 @@ class AcceptedApplicationsResource extends Resource
                     ->icon('heroicon-o-calendar')
                     ->color('primary')
                     ->visible(fn (Applications $record): bool => 
-                        $record->are_documents_approved && !$record->is_interview_completed)
-                    ->url(fn (Applications $record): string => route('filament.admin.resources.user.interview-managements.index', [
-                        'tableFilters[application_id][value]' => $record->id,
-                        'tableFilters[status][value]' => 'awaiting_schedule'
-                    ]))
-                    ->openUrlInNewTab(),
+                        $record->are_documents_approved && !in_array($record->status, ['interview_scheduled', 'interview_completed']))
+                    ->form([
+                        Forms\Components\DateTimePicker::make('scheduled_date')
+                            ->label('Mülakat Tarihi ve Saati')
+                            ->required()
+                            ->minDate(now()),
+                        Forms\Components\Select::make('interviewer_id')
+                            ->label('Mülakatçı')
+                            ->options(
+                                \App\Models\User::query()
+                                    ->where('is_admin', true)
+                                    ->get()
+                                    ->pluck('name', 'id')
+                                    ->toArray()
+                            )
+                            ->searchable()
+                            ->required(),
+                        Forms\Components\TextInput::make('location')
+                            ->label('Konum')
+                            ->maxLength(255),
+                        Forms\Components\Toggle::make('is_online')
+                            ->label('Online Mülakat mı?')
+                            ->default(false),
+                        Forms\Components\TextInput::make('meeting_link')
+                            ->label('Toplantı Linki')
+                            ->url()
+                            ->maxLength(255)
+                            ->visible(fn (Forms\Get $get) => $get('is_online')),
+                        Forms\Components\Textarea::make('notes')
+                            ->label('Notlar')
+                            ->maxLength(65535),
+                    ])
+                    ->action(function (Applications $record, array $data) {
+                        // Find existing interview or create new one
+                        $interview = \App\Models\Interviews::where('application_id', $record->id)->first();
+                        
+                        if (!$interview) {
+                            // If no interview record exists, create a new one
+                            $interview = \App\Models\Interviews::create([
+                                'application_id' => $record->id,
+                                'user_id' => $record->user_id,
+                                'status' => 'awaiting_schedule',
+                                'interview_date' => now(),
+                            ]);
+                        }
+                        
+                        // Update interview details
+                        $interview->interviewer_admin_id = $data['interviewer_id'];
+                        $interview->interview_date = $data['scheduled_date'];
+                        $interview->scheduled_date = $data['scheduled_date'];
+                        $interview->location = $data['location'] ?? null;
+                        $interview->is_online = $data['is_online'] ?? false;
+                        $interview->meeting_link = $data['meeting_link'] ?? null;
+                        $interview->notes = $data['notes'] ?? null;
+                        $interview->status = 'scheduled';
+                        $interview->save();
+                        
+                        // Update application status
+                        $record->status = 'interview_scheduled';
+                        // Update the interview tracking in application
+                        $record->interview_pool_at = now();
+                        $record->interview_pool_by = auth()->id();
+                        $record->save();
+                        
+                        \Filament\Notifications\Notification::make()
+                            ->title('Mülakat başarıyla planlandı')
+                            ->success()
+                            ->send();
+                    })
+                    ->modalHeading('Mülakat Planla')
+                    ->modalDescription('Lütfen mülakat detaylarını girin')
+                    ->modalSubmitActionLabel('Planla'),
                 Tables\Actions\Action::make('transfer_scholarship')
                     ->label('Bursa Aktar')
                     ->icon('heroicon-o-arrow-right-circle')

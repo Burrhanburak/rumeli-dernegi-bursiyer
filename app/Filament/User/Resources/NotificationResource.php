@@ -72,6 +72,7 @@ class NotificationResource extends Resource
                         'document_approved' => 'Belge Onaylandı',
                         'document_rejected' => 'Belge Reddedildi',
                         'document_status' => 'Belge Durumu',
+                        'application_status' => 'Başvuru - Başvuru Durumu',
                         'interview_scheduled' => 'Mülakat Planlandı',
                         'interview_reminder' => 'Mülakat Hatırlatma',
                         'application_status' => ' Başvuru Durumu',
@@ -87,7 +88,7 @@ class NotificationResource extends Resource
                         'document_status' => 'warning',
                         'interview_scheduled' => 'info',
                         'interview_reminder' => 'warning',
-                        'application_status' => 'danger',
+                        'application_status' => 'success',
                         'scholarship_awarded' => 'success',
                         'scholarship_changed' => 'warning',
                         'system' => 'secondary',
@@ -117,7 +118,8 @@ class NotificationResource extends Resource
                     ->options([
                         true => 'Okundu',
                         false => 'Okunmadı',
-                    ]),
+                    ])
+                    ->default(true),
                 Tables\Filters\SelectFilter::make('type')
                     ->label('Tür')
                     ->options([
@@ -144,6 +146,19 @@ class NotificationResource extends Resource
                             $notification->save();
                         }
                         return $data;
+                    }),
+                Tables\Actions\DeleteAction::make()
+                    ->label('Sil')
+                    ->icon('heroicon-o-trash')
+                    ->color('danger')
+                    ->requiresConfirmation()
+                    ->form([
+                        Forms\Components\Textarea::make('reason')
+                            ->label('Silme Sebebi')
+                            ->required(),
+                    ])
+                    ->action(function (Notifications $record) {
+                        $record->delete();
                     }),
                 Tables\Actions\Action::make('mark_read')
                     ->label('Okundu İşaretle')
@@ -183,6 +198,20 @@ class NotificationResource extends Resource
                             
                             Notification::make()
                                 ->title('Tüm seçili bildirimler okundu olarak işaretlendi')
+                                ->success()
+                                ->send();
+                        }),
+                    Tables\Actions\BulkAction::make('delete_all')
+                        ->label('Tümünü Sil')
+                        ->icon('heroicon-o-trash')
+                        ->color('danger')
+                        ->requiresConfirmation()
+                        ->deselectRecordsAfterCompletion()
+                        ->action(function (Collection $records) {
+                            $records->each->delete();
+                            
+                            Notification::make()
+                                ->title('Tüm seçili bildirimler silindi')
                                 ->success()
                                 ->send();
                         }),

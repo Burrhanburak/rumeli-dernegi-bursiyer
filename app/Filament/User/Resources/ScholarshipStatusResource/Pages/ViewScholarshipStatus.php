@@ -10,10 +10,14 @@ class ViewScholarshipStatus extends ViewRecord
 {
     protected static string $resource = ScholarshipStatusResource::class;
 
+    protected static ?string $title = 'Burs Detayları';
+
+    protected static ?string $breadcrumb = 'Burs Detayları';
+
     protected function getHeaderActions(): array
     {
         return [
-            // Actions\EditAction::make(),
+            // Bursu düzenleme izni olmadığı için herhangi bir eylem yok
         ];
     }
 }

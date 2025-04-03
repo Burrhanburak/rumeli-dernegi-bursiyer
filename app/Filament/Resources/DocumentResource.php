@@ -167,11 +167,12 @@ class DocumentResource extends Resource
                 Tables\Actions\EditAction::make()
                     ->label('Düzenle'),
                 Tables\Actions\Action::make('download')
-                    ->label('İndir')
-                    ->url(fn ($record) => $record->file_path ? \Storage::url($record->file_path) : null)
-                    ->icon('heroicon-o-arrow-down-tray')
-                    ->openUrlInNewTab()
-                    ->color('success'),
+                ->label('İndir')
+                ->url(fn ($record) => $record->file_path ? \Storage::url($record->file_path) : null)
+                ->icon('heroicon-o-arrow-down-tray')
+                ->openUrlInNewTab()
+                ->extraAttributes(['download' => true])
+                ->color('success'),
                 Tables\Actions\Action::make('approve')
                     ->label('Onayla')
                     ->icon('heroicon-o-check')

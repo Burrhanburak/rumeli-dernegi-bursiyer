@@ -42,6 +42,8 @@ class Interviews extends Model
      */
     protected $casts = [
         'interview_date' => 'datetime',
+        'scheduled_date' => 'datetime',
+        'completion_date' => 'datetime',
         'is_online' => 'boolean',
         'notification_sent_at' => 'datetime',
         'reminder_sent_at' => 'datetime',

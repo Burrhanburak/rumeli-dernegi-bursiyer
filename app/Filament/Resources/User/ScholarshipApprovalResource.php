@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class ScholarshipApprovalResource extends Resource
 {
@@ -69,8 +70,8 @@ class ScholarshipApprovalResource extends Resource
                             ->preload()
                             ->required()
                             ->disabled(),
-                        Forms\Components\TextInput::make('application_number')
-                            ->label('Başvuru Numarası')
+                        Forms\Components\TextInput::make('application_id')
+                            ->label('Başvuru ID')
                             ->disabled(),
                         Forms\Components\DatePicker::make('application_date')
                             ->label('Başvuru Tarihi')
@@ -85,19 +86,24 @@ class ScholarshipApprovalResource extends Resource
                                 'mulakat_havuzu' => 'Mülakat Havuzu',
                                 'mulakat_planlandi' => 'Mülakat Planlandı',
                                 'mulakat_tamamlandi' => 'Mülakat Tamamlandı',
-                                'kabul_edildi' => 'Kabul Edildi',
-                                'reddedildi' => 'Reddedildi',
+                                'accepted' => 'Kabul Edildi',
+                                'red_edildi' => 'Reddedildi',
                             ])
                             ->disabled(),
-                        Forms\Components\Toggle::make('is_document_verified')
+                        Forms\Components\Checkbox::make('are_documents_approved')
                             ->label('Belgeler Doğrulandı')
-                            ->disabled(),
-                        Forms\Components\Toggle::make('is_interview_scheduled')
-                            ->label('Mülakat Planlandı')
-                            ->disabled(),
-                        Forms\Components\Toggle::make('is_interview_completed')
+                            ->disabled()
+                            ->afterStateHydrated(function ($component, $record) {
+                                // Belgeler doğrulandı olarak işaretle
+                                $component->state(true);
+                            }),
+                        Forms\Components\Checkbox::make('is_interview_completed')
                             ->label('Mülakat Tamamlandı')
-                            ->disabled(),
+                            ->disabled()
+                            ->afterStateHydrated(function ($component, $record) {
+                                // Mülakat tamamlandı olarak işaretle
+                                $component->state(true);
+                            }),
                     ])->columns(2),
                 
                 Forms\Components\Section::make('Mülakat Bilgileri')
@@ -111,37 +117,44 @@ class ScholarshipApprovalResource extends Resource
                             ->label('Mülakat Puanı')
                             ->numeric()
                             ->disabled()
-                            ->default(function ($get) {
-                                $applicationId = $get('id');
-                                $interview = \App\Models\Interviews::where('application_id', $applicationId)
-                                    ->where('status', 'completed')
-                                    ->first();
-                                
-                                return $interview ? $interview->score : null;
+                            ->afterStateHydrated(function ($component, $state, $record) {
+                                if ($record) {
+                                    $interview = \App\Models\Interviews::where('application_id', $record->id)
+                                        ->where('status', 'completed')
+                                        ->first();
+                                    
+                                    if ($interview) {
+                                        $component->state($interview->score);
+                                    }
+                                }
                             }),
                         Forms\Components\Textarea::make('interview_feedback')
                             ->label('Mülakat Geri Bildirimi')
                             ->disabled()
                             ->columnSpanFull()
-                            ->default(function ($get) {
-                                $applicationId = $get('id');
-                                $interview = \App\Models\Interviews::where('application_id', $applicationId)
-                                    ->where('status', 'completed')
-                                    ->first();
-                                
-                                return $interview ? $interview->feedback : null;
+                            ->afterStateHydrated(function ($component, $state, $record) {
+                                if ($record) {
+                                    $interview = \App\Models\Interviews::where('application_id', $record->id)
+                                        ->where('status', 'completed')
+                                        ->first();
+                                    
+                                    if ($interview) {
+                                        $component->state($interview->feedback);
+                                    }
+                                }
                             }),
                     ])->columns(2),
                 
                 Forms\Components\Section::make('Burs Onayı')
                     ->schema([
-                        
                         Forms\Components\Radio::make('approval_status')
                             ->label('Onay Durumu')
                             ->options([
                                 'approve' => 'Kabul Et',
                                 'reject' => 'Reddet',
                             ])
+                            ->default('approve')
+                            ->inline()
                             ->required(),
                         Forms\Components\Select::make('scholarship_amount')
                             ->label('Burs Miktarı (₺)')
@@ -157,21 +170,59 @@ class ScholarshipApprovalResource extends Resource
                                 '4000' => '4000 ₺',
                                 '5000' => '5000 ₺',
                             ])
+                            ->default('1000')
                             ->required()
-                            ->visible(fn ($get) => $get('approval_status') === 'approve'),
+                            ->helperText('Mülakat puanına göre otomatik önerilmiştir')
+                            ->afterStateHydrated(function ($component, $state, $record) {
+                                if ($record && !$state) {
+                                    $interview = \App\Models\Interviews::where('application_id', $record->id)
+                                        ->where('status', 'completed')
+                                        ->first();
+                                    
+                                    if ($interview && $interview->score) {
+                                        // Puana göre burs miktarı öner
+                                        $score = $interview->score;
+                                        if ($score >= 90) {
+                                            $component->state('5000');
+                                        } elseif ($score >= 80) {
+                                            $component->state('3500');
+                                        } elseif ($score >= 70) {
+                                            $component->state('2500');
+                                        } elseif ($score >= 60) {
+                                            $component->state('1500');
+                                        } else {
+                                            $component->state('1000');
+                                        }
+                                    }
+                                }
+                            }),
                         Forms\Components\DatePicker::make('scholarship_start_date')
                             ->label('Burs Başlangıç Tarihi')
+                            ->default(now()->startOfMonth())
                             ->required()
+                            ->helperText('Varsayılan olarak bu ayın başlangıcı')
                             ->minDate(now())
-                            ->visible(fn ($get) => $get('approval_status') === 'approve'),
+                            ->afterStateHydrated(function ($component, $state) {
+                                if (!$state) {
+                                    // Burs başlangıcını bu ayın 1'i olarak ayarla
+                                    $component->state(now()->startOfMonth()->format('Y-m-d'));
+                                }
+                            }),
                         Forms\Components\DatePicker::make('scholarship_end_date')
                             ->label('Burs Bitiş Tarihi')
+                            ->default(now()->addYear()->endOfMonth())
                             ->required()
+                            ->helperText('Varsayılan olarak 1 yıl sonraki aynı ayın sonu')
                             ->minDate(function ($get) {
                                 $startDate = $get('scholarship_start_date');
                                 return $startDate ? Carbon::parse($startDate)->addMonths(1) : now()->addMonths(1);
                             })
-                            ->visible(fn ($get) => $get('approval_status') === 'approve'),
+                            ->afterStateHydrated(function ($component, $state) {
+                                if (!$state) {
+                                    // Burs bitişini 1 yıl sonraki aynı ayın sonu olarak ayarla
+                                    $component->state(now()->addYear()->endOfMonth()->format('Y-m-d'));
+                                }
+                            }),
                         Forms\Components\Textarea::make('approval_notes')
                             ->label('Onay Notları')
                             ->maxLength(65535)
@@ -200,8 +251,8 @@ class ScholarshipApprovalResource extends Resource
                 Tables\Columns\TextColumn::make('id')
                     ->label('ID')
                     ->sortable(),
-                Tables\Columns\TextColumn::make('application_number')
-                    ->label('Başvuru No')
+                Tables\Columns\TextColumn::make('application_id')
+                    ->label('Başvuru ID')
                     ->searchable()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('user.name')
@@ -354,44 +405,99 @@ class ScholarshipApprovalResource extends Resource
                             ->maxLength(65535),
                     ])
                     ->action(function (Applications $record, array $data) {
-                        $record->status = 'kabul_edildi';
-                        $record->scholarship_amount = $data['scholarship_amount'];
-                        $record->scholarship_start_date = $data['scholarship_start_date'];
-                        $record->scholarship_end_date = $data['scholarship_end_date'];
-                        $record->approval_notes = $data['approval_notes'] ?? null;
-                        $record->approval_date = Carbon::now();
-                        $record->save();
-                        
-                        // Create a notification for the user about the scholarship approval
-                        \App\Models\Notifications::create([
-                            'notifiable_id' => $record->user_id,
-                            'notifiable_type' => \App\Models\User::class,
-                            'title' => 'Bursunuz Onaylandı',
-                            'message' => 'Başvurunuz kabul edildi ve bursunuz onaylandı. Burs tutarı: ' . $data['scholarship_amount'] . ' ₺',
-                            'type' => 'application_status',
-                            'application_id' => $record->id,
-                            'is_read' => false,
-                        ]);
-                        
-                        // Öğrenci statüsüne yükselt
-                        if ($record->user) {
-                            $record->user->assignRole('student');
-                            $record->user->save();
+                        try {
+                            DB::beginTransaction();
+                            
+                            $record->status = 'kabul_edildi';
+                            $record->scholarship_amount = $data['scholarship_amount'];
+                            $record->scholarship_start_date = $data['scholarship_start_date'];
+                            $record->scholarship_end_date = $data['scholarship_end_date'];
+                            $record->approval_notes = $data['approval_notes'] ?? null;
+                            $record->approval_date = Carbon::now();
+                            $record->save();
+                            
+                            // Create a notification for the user about the scholarship approval
+                            \App\Models\Notifications::create([
+                                'notifiable_id' => $record->user_id,
+                                'notifiable_type' => \App\Models\User::class,
+                                'title' => 'Bursunuz Onaylandı',
+                                'message' => 'Başvurunuz kabul edildi ve bursunuz onaylandı. Burs tutarı: ' . $data['scholarship_amount'] . ' ₺',
+                                'type' => 'application_status',
+                                'application_id' => $record->id,
+                                'is_read' => false,
+                            ]);
+                            
+                            // Kullanıcıya bildirim gönder
+                            \Filament\Notifications\Notification::make()
+                                ->title('Bildirim Gönderildi')
+                                ->body('Kullanıcıya burs onay bildirimi gönderildi')
+                                ->success()
+                                ->send();
+                            
+                            // Kullanıcının rolünü düzenle (is_admin = false)
+                            if ($record->user) {
+                                $record->user->is_admin = false;
+                                $record->user->save();
+                            }
+                            
+                            // Varsa mevcut burs kaydını kontrol et
+                            $existingScholarship = \App\Models\Scholarships::where('application_id', $record->id)->first();
+                            
+                            if ($existingScholarship) {
+                                // Mevcut kaydı güncelle
+                                $existingScholarship->update([
+                                    'user_id' => $record->user_id,
+                                    'program_id' => $record->program_id,
+                                    'application_id' => $record->id,
+                                    'approved_by' => auth()->id(),
+                                    'name' => 'Standart Burs',
+                                    'start_date' => \Carbon\Carbon::parse($data['scholarship_start_date'])->format('Y-m-d'),
+                                    'end_date' => \Carbon\Carbon::parse($data['scholarship_end_date'])->format('Y-m-d'),
+                                    'amount' => (float) $data['scholarship_amount'],
+                                    'status' => 'active',
+                                    'notes' => $data['approval_notes'] ?? null,
+                                ]);
+                                
+                                \Filament\Notifications\Notification::make()
+                                    ->title('Burs Kaydı Güncellendi')
+                                    ->body('Öğrenci için burs kaydı başarıyla güncellendi')
+                                    ->success()
+                                    ->send();
+                            } else {
+                                // Yeni burs kaydı oluştur
+                                $newScholarship = new \App\Models\Scholarships([
+                                    'user_id' => $record->user_id,
+                                    'program_id' => $record->program_id,
+                                    'application_id' => $record->id,
+                                    'approved_by' => auth()->id(),
+                                    'name' => 'Standart Burs',
+                                    'start_date' => \Carbon\Carbon::parse($data['scholarship_start_date'])->format('Y-m-d'),
+                                    'end_date' => \Carbon\Carbon::parse($data['scholarship_end_date'])->format('Y-m-d'),
+                                    'amount' => (float) $data['scholarship_amount'],
+                                    'status' => 'active',
+                                    'notes' => $data['approval_notes'] ?? null,
+                                ]);
+                                
+                                $newScholarship->save();
+                                
+                                \Filament\Notifications\Notification::make()
+                                    ->title('Burs Kaydı Oluşturuldu')
+                                    ->body('Öğrenci için burs kaydı başarıyla oluşturuldu')
+                                    ->success()
+                                    ->send();
+                            }
+                            
+                            DB::commit();
+                            
+                        } catch (\Exception $e) {
+                            DB::rollBack();
+                            
+                            \Filament\Notifications\Notification::make()
+                                ->title('Hata')
+                                ->body('Burs onaylama işlemi sırasında bir hata oluştu: ' . $e->getMessage())
+                                ->danger()
+                                ->send();
                         }
-                        
-                        // Burs kaydı oluştur
-                        \App\Models\Scholarships::create([
-                            'user_id' => $record->user_id,
-                            'program_id' => $record->program_id,
-                            'application_id' => $record->id,
-                            'approved_by' => auth()->id(),
-                            'name' => 'Standart Burs',
-                            'start_date' => \Carbon\Carbon::parse($data['scholarship_start_date'])->format('Y-m-d'),
-                            'end_date' => \Carbon\Carbon::parse($data['scholarship_end_date'])->format('Y-m-d'),
-                            'amount' => (float) $data['scholarship_amount'],
-                            'status' => 'active',
-                            'notes' => $data['approval_notes'] ?? null,
-                        ]);
                     }),
                 Tables\Actions\Action::make('reject')
                     ->label('Reddet')
@@ -419,6 +525,13 @@ class ScholarshipApprovalResource extends Resource
                             'application_id' => $record->id,
                             'is_read' => false,
                         ]);
+                        
+                        // Kullanıcıya bildirim gönder
+                        \Filament\Notifications\Notification::make()
+                            ->title('Bildirim Gönderildi')
+                            ->body('Kullanıcıya ret bildirimi gönderildi')
+                            ->success()
+                            ->send();
                     })
                     ->requiresConfirmation()
                     ->modalHeading('Başvuru reddedilsin mi?')
@@ -463,45 +576,94 @@ class ScholarshipApprovalResource extends Resource
                                 ->maxLength(65535),
                         ])
                         ->action(function (Collection $records, array $data) {
-                            foreach ($records as $record) {
-                                $record->status = 'kabul_edildi';
-                                $record->scholarship_amount = $data['scholarship_amount'];
-                                $record->scholarship_start_date = $data['scholarship_start_date'];
-                                $record->scholarship_end_date = $data['scholarship_end_date'];
-                                $record->approval_notes = $data['approval_notes'] ?? null;
-                                $record->approval_date = Carbon::now();
-                                $record->save();
+                            try {
+                                \DB::beginTransaction();
                                 
-                                // Create a notification for the user about the scholarship approval
-                                \App\Models\Notifications::create([
-                                    'notifiable_id' => $record->user_id,
-                                    'notifiable_type' => \App\Models\User::class,
-                                    'title' => 'Bursunuz Onaylandı',
-                                    'message' => 'Başvurunuz kabul edildi ve bursunuz onaylandı. Burs tutarı: ' . $data['scholarship_amount'] . ' ₺',
-                                    'type' => 'application_status',
-                                    'application_id' => $record->id,
-                                    'is_read' => false,
-                                ]);
-                                
-                                // Öğrenci statüsüne yükselt
-                                if ($record->user) {
-                                    $record->user->assignRole('student');
-                                    $record->user->save();
+                                foreach ($records as $record) {
+                                    $record->status = 'kabul_edildi';
+                                    $record->scholarship_amount = $data['scholarship_amount'];
+                                    $record->scholarship_start_date = $data['scholarship_start_date'];
+                                    $record->scholarship_end_date = $data['scholarship_end_date'];
+                                    $record->approval_notes = $data['approval_notes'] ?? null;
+                                    $record->approval_date = Carbon::now();
+                                    $record->save();
+                                    
+                                    // Create a notification for the user about the scholarship approval
+                                    \App\Models\Notifications::create([
+                                        'notifiable_id' => $record->user_id,
+                                        'notifiable_type' => \App\Models\User::class,
+                                        'title' => 'Bursunuz Onaylandı',
+                                        'message' => 'Başvurunuz kabul edildi ve bursunuz onaylandı. Burs tutarı: ' . $data['scholarship_amount'] . ' ₺',
+                                        'type' => 'application_status',
+                                        'application_id' => $record->id,
+                                        'is_read' => false,
+                                    ]);
+                                    
+                                    // Kullanıcıya bildirim gönder
+                                    \Filament\Notifications\Notification::make()
+                                        ->title('Bildirim Gönderildi')
+                                        ->body('Kullanıcıya burs onay bildirimi gönderildi')
+                                        ->success()
+                                        ->send();
+                                    
+                                    // Kullanıcının rolünü düzenle (is_admin = false)
+                                    if ($record->user) {
+                                        $record->user->is_admin = false;
+                                        $record->user->save();
+                                    }
+                                    
+                                    // Varsa mevcut burs kaydını kontrol et
+                                    $existingScholarship = \App\Models\Scholarships::where('application_id', $record->id)->first();
+                                    
+                                    if ($existingScholarship) {
+                                        // Mevcut kaydı güncelle
+                                        $existingScholarship->update([
+                                            'user_id' => $record->user_id,
+                                            'program_id' => $record->program_id,
+                                            'application_id' => $record->id,
+                                            'approved_by' => auth()->id(),
+                                            'name' => 'Standart Burs',
+                                            'start_date' => \Carbon\Carbon::parse($data['scholarship_start_date'])->format('Y-m-d'),
+                                            'end_date' => \Carbon\Carbon::parse($data['scholarship_end_date'])->format('Y-m-d'),
+                                            'amount' => (float) $data['scholarship_amount'],
+                                            'status' => 'active',
+                                            'notes' => $data['approval_notes'] ?? null,
+                                        ]);
+                                    } else {
+                                        // Yeni burs kaydı oluştur
+                                        $newScholarship = new \App\Models\Scholarships([
+                                            'user_id' => $record->user_id,
+                                            'program_id' => $record->program_id,
+                                            'application_id' => $record->id,
+                                            'approved_by' => auth()->id(),
+                                            'name' => 'Standart Burs',
+                                            'start_date' => \Carbon\Carbon::parse($data['scholarship_start_date'])->format('Y-m-d'),
+                                            'end_date' => \Carbon\Carbon::parse($data['scholarship_end_date'])->format('Y-m-d'),
+                                            'amount' => (float) $data['scholarship_amount'],
+                                            'status' => 'active',
+                                            'notes' => $data['approval_notes'] ?? null,
+                                        ]);
+                                        
+                                        $newScholarship->save();
+                                    }
                                 }
                                 
-                                // Burs kaydı oluştur
-                                \App\Models\Scholarships::create([
-                                    'user_id' => $record->user_id,
-                                    'program_id' => $record->program_id,
-                                    'application_id' => $record->id,
-                                    'approved_by' => auth()->id(),
-                                    'name' => 'Standart Burs',
-                                    'start_date' => \Carbon\Carbon::parse($data['scholarship_start_date'])->format('Y-m-d'),
-                                    'end_date' => \Carbon\Carbon::parse($data['scholarship_end_date'])->format('Y-m-d'),
-                                    'amount' => (float) $data['scholarship_amount'],
-                                    'status' => 'active',
-                                    'notes' => $data['approval_notes'] ?? null,
-                                ]);
+                                \DB::commit();
+                                
+                                \Filament\Notifications\Notification::make()
+                                    ->title('Burs Kayıtları Oluşturuldu')
+                                    ->body('Seçilen başvurular için burs kayıtları başarıyla oluşturuldu')
+                                    ->success()
+                                    ->send();
+                                
+                            } catch (\Exception $e) {
+                                \DB::rollBack();
+                                
+                                \Filament\Notifications\Notification::make()
+                                    ->title('Hata')
+                                    ->body('Toplu burs onaylama işlemi sırasında bir hata oluştu: ' . $e->getMessage())
+                                    ->danger()
+                                    ->send();
                             }
                         })
                         ->requiresConfirmation()
@@ -562,5 +724,27 @@ class ScholarshipApprovalResource extends Resource
             'view' => Pages\ViewScholarshipApproval::route('/{record}'),
             'edit' => Pages\EditScholarshipApproval::route('/{record}/edit'),
         ];
+    }
+
+    public static function mutateFormDataBeforeCreate(array $data): array
+    {
+        if ($data['approval_status'] === 'approve') {
+            $data['status'] = 'kabul_edildi';
+        } else {
+            $data['status'] = 'red_edildi';
+        }
+        
+        return $data;
+    }
+    
+    public static function mutateFormDataBeforeSave(array $data): array
+    {
+        if ($data['approval_status'] === 'approve') {
+            $data['status'] = 'kabul_edildi';
+        } else {
+            $data['status'] = 'red_edildi';
+        }
+        
+        return $data;
     }
 }

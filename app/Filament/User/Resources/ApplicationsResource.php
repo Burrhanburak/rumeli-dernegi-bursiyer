@@ -989,9 +989,13 @@ Forms\Components\Section::make('Kişisel Bilgiler')
                     ->label('Evraklar Onaylı')
                     ->boolean(),
                     
-                Tables\Columns\IconColumn::make('is_interview_completed')
-                    ->label('Mülakat Tamamlandı')
-                    ->boolean(),
+                // Tables\Columns\IconColumn::make('is_interview_completed')
+                //     ->label('Mülakat Tamamlandı')
+                //     ->boolean()
+                //     ->trueIcon('heroicon-o-check-badge')
+                //     ->falseIcon('heroicon-o-x-circle')
+                //     ->trueColor('success')
+                //     ->falseColor('warning'),
                     
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Oluşturulma Tarihi')

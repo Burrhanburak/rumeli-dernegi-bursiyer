@@ -12,17 +12,18 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 
 class ScholarshipStatusResource extends Resource
 {
     protected static ?string $model = Scholarships::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-banknotes';
+    protected static ?string $navigationIcon = 'heroicon-o-academic-cap';
     
     protected static ?string $navigationLabel = 'Burs Durumum';
     
-    protected static ?int $navigationSort = 4;
+    protected static ?int $navigationSort = 2;
 
     protected static ?string $navigationGroup = 'Burs İşlemleri';
     
@@ -35,67 +36,91 @@ class ScholarshipStatusResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
-            ->where('user_id', Auth::id());
+            ->where('user_id', Auth::id())
+            ->latest();
+    }
+
+    public static function canCreate(): bool
+    {
+        return false;
+    }
+
+    public static function canEdit(Model $record): bool
+    {
+        return false;
+    }
+
+    public static function canDelete(Model $record): bool
+    {
+        return false;
     }
 
     public static function form(Form $form): Form
     {
         return $form
             ->schema([
-                Forms\Components\Hidden::make('user_id')
-                    ->default(Auth::id()),
-                Forms\Components\Select::make('program_id')
-                    ->relationship('program', 'name')
-                    ->required()
-                    ->searchable()
-                    ->label('Burs Programı'),
-                Forms\Components\Select::make('application_id')
-                    ->relationship('application', 'id')
-                    ->required()
-                    ->searchable()
-                    ->label('Başvuru'),
-                Forms\Components\TextInput::make('name')
-                    ->label('Burs Adı')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\DatePicker::make('start_date')
-                    ->label('Başlangıç Tarihi')
-                    ->required(),
-                Forms\Components\DatePicker::make('end_date')
-                    ->label('Bitiş Tarihi'),
-                Forms\Components\TextInput::make('amount')
-                    ->label('Tutar')
-                    ->numeric()
-                    ->required(),
-                Forms\Components\Select::make('status')
-                    ->options([
-                        'aktif' => 'Aktif',
-                        'durduruldu' => 'Durduruldu',
-                        'sonlandirildi' => 'Sonlandırıldı',
-                    ])
-                    ->default('aktif')
-                    ->required()
-                    ->label('Durum'),
-                Forms\Components\Textarea::make('notes')
-                    ->label('Notlar')
-                    ->maxLength(65535)
-                    ->columnSpanFull(),
+                Forms\Components\Section::make('Burs Bilgileri')
+                    ->schema([
+                        Forms\Components\TextInput::make('name')
+                            ->label('Burs Adı')
+                            ->disabled(),
+                        Forms\Components\TextInput::make('amount')
+                            ->label('Burs Miktarı (₺)')
+                            ->disabled(),
+                        Forms\Components\DatePicker::make('start_date')
+                            ->label('Başlangıç Tarihi')
+                            ->disabled(),
+                        Forms\Components\DatePicker::make('end_date')
+                            ->label('Bitiş Tarihi')
+                            ->disabled(),
+                        Forms\Components\Select::make('status')
+                            ->label('Durum')
+                            ->options([
+                                'active' => 'Aktif',
+                                'suspended' => 'Askıya Alındı',
+                                'completed' => 'Tamamlandı',
+                                'terminated' => 'Sonlandırıldı',
+                            ])
+                            ->disabled(),
+                        Forms\Components\Textarea::make('status_reason')
+                            ->label('Durum Nedeni')
+                            ->disabled()
+                            ->visible(fn (Scholarships $record) => !empty($record->status_reason)),
+                    ])->columns(2),
+                
+                Forms\Components\Section::make('Program Bilgileri')
+                    ->schema([
+                        Forms\Components\Select::make('program_id')
+                            ->label('Program')
+                            ->relationship('program', 'name')
+                            ->disabled(),
+                        Forms\Components\TextInput::make('application_id')
+                            ->label('Başvuru ID')
+                            ->disabled(),
+                    ])->columns(2),
             ]);
     }
 
     public static function table(Table $table): Table
     {
         return $table
-        ->emptyStateHeading('Burs durumunuz bulunamadı.')
-        ->emptyStateDescription('Lütfen tum belgelerinizi yukledikten sonra tekrar deneyiniz ve Mülakat sonucunda burs durumunuzu görüntüleyebilirsiniz.')
-       
+            ->emptyStateHeading('Aktif bursunuz bulunmamaktadır')
+            ->emptyStateDescription('Henüz bir burs kazanmadınız veya bursunuz onaylanmadı. Başvurunuzun durumunu takip edin.')
             ->columns([
                 Tables\Columns\TextColumn::make('program.name')
-                    ->label('Program')
+                    ->label('Burs Programı Adı')
                     ->searchable(),
                 Tables\Columns\TextColumn::make('amount')
-                    ->label('Tutar')
-                    ->money('TRY')
+                    ->label('Burs Miktarı')
+                    ->formatStateUsing(fn ($state) => $state . ' ₺')
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('start_date')
+                    ->label('Başlangıç Tarihi')
+                    ->date()
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('end_date')
+                    ->label('Bitiş Tarihi')
+                    ->date()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('status')
                     ->label('Durum')
@@ -113,35 +138,15 @@ class ScholarshipStatusResource extends Resource
                         'completed' => 'Tamamlandı',
                         'terminated' => 'Sonlandırıldı',
                         default => $state,
-                    })
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('start_date')
-                    ->label('Başlangıç Tarihi')
-                    ->date()
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('end_date')
-                    ->label('Bitiş Tarihi')
-                    ->date()
-                    ->sortable(),
-            ])
-            ->filters([
-                Tables\Filters\SelectFilter::make('status')
-                    ->label('Durum')
-                    ->options([
-                        'active' => 'Aktif',
-                        'suspended' => 'Askıya Alındı',
-                        'completed' => 'Tamamlandı',
-                        'terminated' => 'Sonlandırıldı',
-                    ]),
+                    }),
+                Tables\Columns\TextColumn::make('program.name')
+                    ->label('Program Adı')
+                    ->searchable(),
             ])
             ->actions([
                 Tables\Actions\ViewAction::make()
-                    ->label('Görüntüle'),
-            ])
-            ->bulkActions([
-                //
-            ])
-            ->defaultSort('start_date', 'desc');
+                    ->label('Detay Gör'),
+            ]);
     }
 
     public static function getRelations(): array

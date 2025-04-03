@@ -28,7 +28,11 @@ class StatsOverview extends BaseWidget
                 ->description('Toplam bildirim sayısı')
                 ->descriptionIcon('heroicon-o-bell')
                 ->color('secondary'),
-       
+                Stat::make('Burs Durumu', $user->scholarships->count())
+                ->description('Toplam burs durumu')
+                ->descriptionIcon('heroicon-o-check-circle')
+                ->color('success'),
+
         ];
     }
     

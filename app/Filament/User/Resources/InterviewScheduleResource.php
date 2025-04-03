@@ -50,7 +50,7 @@ class InterviewScheduleResource extends Resource
                     ->label('Konum'),
                 Forms\Components\TextInput::make('meeting_link')
                     ->label('Toplantı Linki')
-                    ->url(fn (Interviews $record): string => $record->meeting_link),
+                    ->url(fn (Interviews $record): ?string => $record->meeting_link),
                 Forms\Components\Toggle::make('is_online')
                     ->label('Online Mülakat'),
                 Forms\Components\Select::make('status')
@@ -84,9 +84,10 @@ class InterviewScheduleResource extends Resource
                     ->searchable(),
                 Tables\Columns\TextColumn::make('meeting_link')
                     ->label('Toplantı Linki')
-                    ->url(fn (Interviews $record): string => $record->meeting_link)
+                    ->url(fn (Interviews $record): ?string => $record->meeting_link)
                     ->openUrlInNewTab()
                     ->searchable(),
+                    
                 Tables\Columns\TextColumn::make('status')
                     ->label('Durum')
                     ->badge()

@@ -180,6 +180,19 @@ class UserResource extends Resource
                     ->label('Görüntüle'),
                 Tables\Actions\EditAction::make()
                     ->label('Düzenle'),
+                Tables\Actions\DeleteAction::make()
+                    ->label('Sil')
+                    ->icon('heroicon-o-trash')
+                    ->color('danger')
+                    ->requiresConfirmation()
+                    ->form([
+                        Forms\Components\Textarea::make('reason')
+                            ->label('Silme Sebebi')
+                            ->required(),
+                    ])
+                    ->action(function (User $record) {
+                        $record->delete();
+                    }),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([

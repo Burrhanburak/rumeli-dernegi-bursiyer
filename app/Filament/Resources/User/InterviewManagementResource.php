@@ -29,17 +29,17 @@ class InterviewManagementResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-user-circle';
     
-    protected static ?string $navigationLabel = 'Mülakat Yönetimi';
+    protected static ?string $navigationLabel = 'Mülakat Havuzu';
     
     protected static ?int $navigationSort = 2;
     
     protected static ?string $navigationGroup = 'Mülakat Yönetimi';
 
-    protected static ?string $title = 'Mülakat Yönetimi';
+    protected static ?string $title = 'Mülakat Havuzu';
 
-    protected static ?string $breadcrumb = 'Mülakat Yönetimi';
+    protected static ?string $breadcrumb = 'Mülakat Havuzu';
 
-    protected static ?string $breadcrumbParent = 'Mülakat Yönetimi';
+    protected static ?string $breadcrumbParent = 'Mülakat Havuzu';
 
     public static function form(Form $form): Form
     {
@@ -222,6 +222,19 @@ class InterviewManagementResource extends Resource
                     ->label('Görüntüle'),
                 Tables\Actions\EditAction::make()
                     ->label('Düzenle'),
+                Tables\Actions\DeleteAction::make()
+                    ->label('Sil')
+                    ->icon('heroicon-o-trash')
+                    ->color('danger')
+                    ->requiresConfirmation()
+                    ->form([
+                        Forms\Components\Textarea::make('reason')
+                            ->label('Silme Sebebi')
+                            ->required(),
+                    ])
+                    ->action(function (Interviews $record) {
+                        $record->delete();
+                    }),
                 Tables\Actions\Action::make('complete_interview')
                     ->label('Mülakatı Tamamla')
                     ->icon('heroicon-o-check-badge')
@@ -279,6 +292,27 @@ class InterviewManagementResource extends Resource
                         }
                     })
                     ->visible(fn (Interviews $record): bool => in_array($record->status, ['scheduled', 'confirmed'])),
+                Tables\Actions\Action::make('transfer_to_scholarship')
+                    ->label('Bursa Aktar')
+                    ->icon('heroicon-o-arrow-right-circle')
+                    ->color('success')
+                    ->action(function (Interviews $record) {
+                        if ($record->application) {
+                            $record->application->status = 'accepted';
+                            $record->application->accepted_by = auth()->id();
+                            $record->application->accepted_at = now();
+                            $record->application->save();
+                            
+                            \Filament\Notifications\Notification::make()
+                                ->title('Burs Onayına Aktarıldı')
+                                ->body('Başvuru burs onay sürecine aktarıldı.')
+                                ->success()
+                                ->send();
+                        }
+                    })
+                    ->visible(fn (Interviews $record): bool => 
+                        $record->status === 'completed' && 
+                        $record->application),
                 Tables\Actions\Action::make('cancel')
                     ->label('İptal Et')
                     ->icon('heroicon-o-x-mark')
@@ -467,6 +501,40 @@ class InterviewManagementResource extends Resource
                                     $record->status = 'canceled';
                                     $record->save();
                                 }
+                            }
+                        }),
+                    Tables\Actions\BulkAction::make('bulk_transfer_to_scholarship')
+                        ->label('Toplu Bursa Aktar')
+                        ->icon('heroicon-o-arrow-right-circle')
+                        ->color('success')
+                        ->action(function (Collection $records) {
+                            $transferredCount = 0;
+                            
+                            foreach ($records as $record) {
+                                if ($record->status === 'completed' && 
+                                    $record->application) {
+                                    
+                                    $record->application->status = 'accepted';
+                                    $record->application->accepted_by = auth()->id();
+                                    $record->application->accepted_at = now();
+                                    $record->application->save();
+                                    
+                                    $transferredCount++;
+                                }
+                            }
+                            
+                            if ($transferredCount > 0) {
+                                \Filament\Notifications\Notification::make()
+                                    ->title('Burs Onayına Aktarıldı')
+                                    ->body($transferredCount . ' başvuru burs onay sürecine aktarıldı.')
+                                    ->success()
+                                    ->send();
+                            } else {
+                                \Filament\Notifications\Notification::make()
+                                    ->title('İşlem Yapılmadı')
+                                    ->body('Aktarılabilecek uygun başvuru bulunamadı.')
+                                    ->warning()
+                                    ->send();
                             }
                         }),
                     Tables\Actions\DeleteBulkAction::make()
