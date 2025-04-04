@@ -31,7 +31,7 @@ class InterviewManagementResource extends Resource
     
     protected static ?string $navigationLabel = 'Mülakat Havuzu';
     
-    protected static ?int $navigationSort = 2;
+    protected static ?int $navigationSort = 3;
     
     protected static ?string $navigationGroup = 'Mülakat Yönetimi';
 

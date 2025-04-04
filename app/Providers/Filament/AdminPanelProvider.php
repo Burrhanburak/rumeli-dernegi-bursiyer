@@ -22,7 +22,7 @@ use App\Filament\Pages\AdminDashboard;
 use Filament\Enums\ThemeMode;
 use App\Filament\Widgets\AplicationsChart;
 use App\Filament\Pages\Auth\Login as AdminLogin;
-use Filament\Navigation\NavigationItem;
+use Filament\Navigation\NavigationGroup;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -59,9 +59,12 @@ class AdminPanelProvider extends PanelProvider
                 AdminDashboard::class,
             ])
             ->navigationGroups([
-                'Başvuru İşlemleri',
-                'Belge Yönetimi',
+                'Başvuru Yönetimi',
                 'Burs Yönetimi',
+                'Mülakat Yönetimi',
+                'Belge Yönetimi',
+                'Kullanıcı Yönetimi',
+                'İletişim',
                 'Sistem',
             ])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')

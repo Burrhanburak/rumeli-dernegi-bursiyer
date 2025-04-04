@@ -22,7 +22,7 @@ class NotificationsResource extends Resource
     
     protected static ?string $navigationGroup = 'İletişim';
     
-    protected static ?int $navigationSort = 1;
+    protected static ?int $navigationSort = 6;
     
     protected static ?string $navigationLabel = 'Bildirimler';
 
