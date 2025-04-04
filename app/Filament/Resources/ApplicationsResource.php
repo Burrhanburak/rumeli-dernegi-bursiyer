@@ -141,6 +141,10 @@ Forms\Components\Grid::make()
         ->countrySearch(false)
         ->label('Telefon Numarası')
         ->required()
+        ->rules(['phone:TR'])
+        ->validationMessages([
+            'phone' => 'Lütfen geçerli bir telefon numarası girin.'
+        ])
         ->unique(User::class, ignoreRecord: true)
         ->validationMessages([
             'unique' => 'Bu telefon numarası zaten kayıtlı.'

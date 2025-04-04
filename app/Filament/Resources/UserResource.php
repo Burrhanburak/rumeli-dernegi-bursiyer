@@ -77,10 +77,11 @@ class UserResource extends Resource
                             ->countrySearch(false)
                             ->label('Telefon Numarası')
                             ->required()
-                            ->unique(User::class, ignoreRecord: true)
+                            ->rules(['phone:TR'])
                             ->validationMessages([
-                                'unique' => 'Bu telefon numarası zaten kayıtlı.'
-                            ]),
+                                'phone' => 'Lütfen geçerli bir telefon numarası girin.'
+                            ])
+                            ->unique(User::class, ignoreRecord: true),
                         Forms\Components\TextInput::make('address')
                             ->label('Adres')
                             ->placeholder('Adresinizi girin')

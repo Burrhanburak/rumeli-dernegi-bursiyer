@@ -77,10 +77,12 @@ class ProfileResource extends Resource
             ->countrySearch(false)
             ->label('Telefon Numarası')
             ->required()
-            ->unique(User::class, ignoreRecord: true)
+            ->rules(['phone:TR']) 
             ->validationMessages([
-                'unique' => 'Bu telefon numarası zaten kayıtlı.'
-            ]),
+                'unique' => 'Bu telefon numarası zaten kayıtlı.',
+                'phone' => 'Lütfen geçerli bir telefon numarası girin.'
+            ])
+            ->unique(User::class, ignoreRecord: true),
                         Forms\Components\DatePicker::make('birth_date')
                            
                             ->native(false)
@@ -106,6 +108,7 @@ class ProfileResource extends Resource
                             ->placeholder('T.C. Kimlik Numaranız')
                             ->required()
                             ->numeric()
+                            ->disabled('edit')
                             ->length(11),
                       
                     ])->columns(2),

@@ -92,6 +92,7 @@ Forms\Components\Section::make('Kişisel Bilgiler')
                 ->required()
                 ->numeric()
                 ->length(11)
+                ->disabled('edit')
                 ->default(Auth::user()->national_id),
                 
             Forms\Components\TextInput::make('name')
@@ -154,6 +155,10 @@ Forms\Components\Section::make('Kişisel Bilgiler')
             ->countrySearch(false)
             ->label('Telefon Numarası')
             ->required()
+            ->rules(['phone:TR'])
+            ->validationMessages([
+                'phone' => 'Lütfen geçerli bir telefon numarası girin.'
+            ])
             ->default(Auth::user()->phone),
            
          
@@ -596,6 +601,10 @@ Forms\Components\Section::make('Kişisel Bilgiler')
                                         ->placeholder('Ailenizin telefon numarası')
                                         ->defaultCountry('tr')
                                         ->initialCountry('tr')
+                                        ->rules(['phone:TR'])
+                                        ->validationMessages([
+                                            'phone' => 'Lütfen geçerli bir telefon numarası girin.'
+                                        ])
                                 ])->columns(3),
                         ])
                         ->columns(1)
@@ -836,6 +845,10 @@ Forms\Components\Section::make('Kişisel Bilgiler')
                                 ->placeholder('1. referansınızın telefon numarası')
                                 ->defaultCountry('tr')
                                 ->initialCountry('tr')
+                                ->rules(['phone:TR'])
+                                ->validationMessages([
+                                    'phone' => 'Lütfen geçerli bir telefon numarası girin.'
+                                ])
                                
                         ])->columns(2),
                         
@@ -853,6 +866,10 @@ Forms\Components\Section::make('Kişisel Bilgiler')
                                 ->defaultCountry('tr')
                                 ->required()
                                 ->initialCountry('tr')
+                                ->rules(['phone:TR'])
+                                ->validationMessages([
+                                    'phone' => 'Lütfen geçerli bir telefon numarası girin.'
+                                ])
                                
                         ])->columns(2),
                 ])
