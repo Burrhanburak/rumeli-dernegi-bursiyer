@@ -738,7 +738,6 @@ class InterviewManagementResource extends Resource
                         }),
                 ]),
             ])
-            ->label('Mülakat İşlemleri')
             ->defaultSort('scheduled_date', 'asc');
     }
 
