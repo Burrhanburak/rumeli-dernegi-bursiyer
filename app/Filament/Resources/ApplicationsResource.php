@@ -23,6 +23,7 @@ use Ysfkaya\FilamentPhoneInput\Tables\PhoneColumn;
 use Ysfkaya\FilamentPhoneInput\Infolists\PhoneEntry;
 use Ysfkaya\FilamentPhoneInput\PhoneInputNumberType;
 use Filament\Notifications\Notification;
+use App\Models\ScholarshipProgram;
 
 class ApplicationsResource extends Resource
 {
@@ -53,6 +54,19 @@ Forms\Components\Section::make('Kişisel Bilgiler')
 ->description('Başvuru sahibinin kişisel bilgilerini girin')
 ->icon('heroicon-o-user')
 ->schema([
+// Önce Burs Programı seçimi
+Forms\Components\Grid::make()
+    ->schema([
+        Forms\Components\Select::make('program_id')
+            ->relationship('program', 'name')
+            ->label('Burs Programı')
+            ->placeholder('Başvurmak istediğiniz burs programını seçin')
+            ->options(ScholarshipProgram::all()->pluck('name', 'id'))
+            ->preload()
+            ->required()
+            ->searchable(),
+    ])->columns(1),
+    
 Forms\Components\Grid::make()
     ->schema([
         Forms\Components\FileUpload::make('image')
@@ -76,9 +90,10 @@ Forms\Components\Grid::make()
         Forms\Components\TextInput::make('national_id')
             ->label('T.C. Kimlik No')
             ->placeholder('T.C. Kimlik Numaranız')
-            ->required()
+            // ->required()
             ->numeric()
             ->length(11)
+            // ->disabled('edit')
             ->disabled(fn (string $operation): bool => in_array($operation, ['view', 'edit']))
             ->default(Auth::user()->national_id),
             
@@ -146,11 +161,8 @@ Forms\Components\Grid::make()
         ->validationMessages([
             'phone' => 'Lütfen geçerli bir telefon numarası girin.'
         ])
-        ->unique(User::class, ignoreRecord: true)
-        ->validationMessages([
-            'unique' => 'Bu telefon numarası zaten kayıtlı.'
-        ])
         ->default(Auth::user()->phone),
+       
      
             
         Forms\Components\TextInput::make('email')
@@ -299,7 +311,8 @@ Forms\Components\Grid::make()
                         Forms\Components\TextInput::make('university_entrance_score')
                             ->label('Üniversite Giriş Puanı')
                             ->maxvalue(500)
-                            ->placeholder('Üniversite giriş puanınız')
+                            ->placeholder('Üniversite giriş puanınını')
+                            ->helperText('Örnek: 500')
                             ->numeric(),
                     ])->columns(2),
                     
@@ -591,6 +604,10 @@ Forms\Components\Grid::make()
                                     ->placeholder('Ailenizin telefon numarası')
                                     ->defaultCountry('tr')
                                     ->initialCountry('tr')
+                                    ->rules(['phone:TR'])
+                                    ->validationMessages([
+                                        'phone' => 'Lütfen geçerli bir telefon numarası girin.'
+                                    ])
                             ])->columns(3),
                     ])
                     ->columns(1)
@@ -831,6 +848,10 @@ Forms\Components\Grid::make()
                             ->placeholder('1. referansınızın telefon numarası')
                             ->defaultCountry('tr')
                             ->initialCountry('tr')
+                            ->rules(['phone:TR'])
+                            ->validationMessages([
+                                'phone' => 'Lütfen geçerli bir telefon numarası girin.'
+                            ])
                            
                     ])->columns(2),
                     
@@ -846,9 +867,13 @@ Forms\Components\Grid::make()
                             ->label('2. Referans Telefon')
                             ->placeholder('2. referansınızın telefon numarası (varsa)')
                             ->defaultCountry('tr')
+                            ->required()
                             ->initialCountry('tr')
-                            
-                          
+                            ->rules(['phone:TR'])
+                            ->validationMessages([
+                                'phone' => 'Lütfen geçerli bir telefon numarası girin.'
+                            ])
+                           
                     ])->columns(2),
             ])
             ->collapsible()
