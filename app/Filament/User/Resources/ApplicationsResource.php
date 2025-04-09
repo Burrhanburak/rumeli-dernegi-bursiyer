@@ -89,10 +89,11 @@ Forms\Components\Section::make('Kişisel Bilgiler')
             Forms\Components\TextInput::make('national_id')
                 ->label('T.C. Kimlik No')
                 ->placeholder('T.C. Kimlik Numaranız')
-                ->required()
+                // ->required()
                 ->numeric()
                 ->length(11)
-                ->disabled('edit')
+                // ->disabled('edit')
+                ->disabled(fn (string $operation): bool => in_array($operation, ['view', 'edit']))
                 ->default(Auth::user()->national_id),
                 
             Forms\Components\TextInput::make('name')
@@ -309,7 +310,8 @@ Forms\Components\Section::make('Kişisel Bilgiler')
                             Forms\Components\TextInput::make('university_entrance_score')
                                 ->label('Üniversite Giriş Puanı')
                                 ->maxvalue(500)
-                                ->placeholder('Üniversite giriş puanınız')
+                                ->placeholder('Üniversite giriş puanınını')
+                                ->helperText('Örnek: 500')
                                 ->numeric(),
                         ])->columns(2),
                         
@@ -1005,6 +1007,10 @@ Forms\Components\Section::make('Kişisel Bilgiler')
                 Tables\Columns\IconColumn::make('are_documents_approved')
                     ->label('Evraklar Onaylı')
                     ->boolean(),
+                    // NOTE: This isn't automatically updating when documents are approved.
+                    // A better approach would be to implement a model observer or event listener that 
+                    // checks all document statuses and updates this field when all documents are approved.
+                    // This should be independent from the application status.
                     
                 // Tables\Columns\IconColumn::make('is_interview_completed')
                 //     ->label('Mülakat Tamamlandı')
@@ -1049,7 +1055,8 @@ Forms\Components\Section::make('Kişisel Bilgiler')
                 ->icon('heroicon-o-user')
                     ->schema([
                         TextEntry::make('national_id')
-                            ->label('TC Kimlik No'),
+                            ->label('TC Kimlik No')
+                            ->default(Auth::user()->national_id),
                         TextEntry::make('name')
                             ->label('Ad'),
                         TextEntry::make('surname')

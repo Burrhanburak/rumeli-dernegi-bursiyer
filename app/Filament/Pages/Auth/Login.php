@@ -13,6 +13,7 @@ use Filament\Pages\Dashboard;
 use Illuminate\Http\RedirectResponse;
 use Livewire\Features\SupportRedirects\Redirector;
 use Illuminate\Contracts\Support\Htmlable;
+use Illuminate\Validation\ValidationException;
 
 class Login extends AdminLogin
 {
@@ -89,10 +90,12 @@ class Login extends AdminLogin
     protected function getEmailFormComponent(): Component
     {
         return TextInput::make('email')
-            ->label(__('Email'))
+            ->label(__('E-posta'))
             ->placeholder('E-posta adresinizi giriniz')
             ->validationMessages([
-                'email.required' => 'Email alanı zorunludur.',
+                'email.required' => 'E-posta alanı zorunludur.',
+                'email.email' => 'Geçerli bir e-posta adresi giriniz.',
+                'email.exists' => 'Bu e-posta adresi ile kayıtlı bir kullanıcı bulunamadı.',
             ])
             ->email()
             ->required()
@@ -108,6 +111,7 @@ class Login extends AdminLogin
             ->placeholder('Şifrenizi giriniz')
             ->validationMessages([
                 'password.required' => 'Şifre alanı zorunludur.',
+                'password.current_password' => 'Girdiğiniz şifre yanlış.',
             ])
             ->password()
             ->required()
@@ -147,5 +151,12 @@ class Login extends AdminLogin
             'email' => $data['email'],
             'password' => $data['password'],
         ];
+    }
+
+    protected function throwFailureValidationException(): never
+    {
+        throw ValidationException::withMessages([
+            'data.email' => 'E-posta veya şifre hatalı.',
+        ]);
     }
 }

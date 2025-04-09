@@ -5,6 +5,7 @@ namespace App\Filament\Resources\User\InterviewManagementResource\Pages;
 use App\Filament\Resources\User\InterviewManagementResource;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
+use Filament\Notifications\Notification;
 
 class EditInterviewManagement extends EditRecord
 {
@@ -25,4 +26,28 @@ class EditInterviewManagement extends EditRecord
     protected static ?string $breadcrumb = 'Mülakat Yönetimi';
 
     protected static ?string $breadcrumbParent = 'Mülakat Yönetimi';
+
+    protected function getSavedNotification(): ?Notification
+    {
+        return Notification::make()
+            ->success()
+            ->title('Mülakat başarıyla güncellendi')
+            ->send();
+    }
+
+    protected function getSaveFormAction(): Actions\Action
+    {
+        return parent::getSaveFormAction()
+            ->label('Değişlikleri Kaydet');
+
+    }
+
+    protected function getCancelFormAction(): Actions\Action
+    {
+        return parent::getCancelFormAction()
+            ->label('İptal');
+    }
+
+
+
 }

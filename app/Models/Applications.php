@@ -10,12 +10,10 @@ use App\Models\Interviews;
 use App\Models\ScholarshipPrograms;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Spatie\Activitylog\Traits\LogsActivity;
-use Spatie\Activitylog\LogOptions;
 
 class Applications extends Model
 {
-    use HasFactory, LogsActivity;
+    use HasFactory;
     protected $fillable = [
         'user_id',
         'program_id',
@@ -357,14 +355,5 @@ class Applications extends Model
         }
         
         return 'User Not Found (ID: ' . $this->user_id . ')';
-    }
-
-    public function getActivitylogOptions(): LogOptions
-    {
-        return LogOptions::defaults()
-            ->logOnly(['status', 'user_id', 'program_id', 'application_date', 'scholarship_amount'])
-            ->logOnlyDirty()
-            ->dontSubmitEmptyLogs()
-            ->useLogName('application');
     }
 }

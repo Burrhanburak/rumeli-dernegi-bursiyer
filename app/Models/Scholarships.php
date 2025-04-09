@@ -5,12 +5,10 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Spatie\Activitylog\Traits\LogsActivity;
-use Spatie\Activitylog\LogOptions;
 
 class Scholarships extends Model
 {
-    use HasFactory, LogsActivity;
+    use HasFactory;
     
     /**
      * Status enum değerleri
@@ -50,18 +48,6 @@ class Scholarships extends Model
         'end_date' => 'date',
         'amount' => 'decimal:2',
     ];
-    
-    /**
-     * ActivityLog options
-     */
-    public function getActivitylogOptions(): LogOptions
-    {
-        return LogOptions::defaults()
-            ->logOnly(['user_id', 'program_id', 'amount', 'status', 'start_date', 'end_date'])
-            ->logOnlyDirty()
-            ->dontSubmitEmptyLogs()
-            ->useLogName('scholarship');
-    }
     
     /**
      * Get the user that received this scholarship.

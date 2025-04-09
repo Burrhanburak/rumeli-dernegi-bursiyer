@@ -79,6 +79,7 @@ Forms\Components\Grid::make()
             ->required()
             ->numeric()
             ->length(11)
+            ->disabled(fn (string $operation): bool => in_array($operation, ['view', 'edit']))
             ->default(Auth::user()->national_id),
             
         Forms\Components\TextInput::make('name')
@@ -1073,33 +1074,33 @@ Forms\Components\Grid::make()
                     })
                     ->html(),
 
-                Tables\Columns\TextColumn::make('interview_status')
-                    ->label('Mülakat Durumu')
-                    ->formatStateUsing(function ($record) {
-                        $interview = $record->interviews()->first();
-                        if (!$interview) {
-                            return 'Mülakat yapılmadı';
-                        }
+                // Tables\Columns\TextColumn::make('interview_status')
+                //     ->label('Mülakat Durumu')
+                //     ->formatStateUsing(function ($record) {
+                //         $interview = $record->interviews()->first();
+                //         if (!$interview) {
+                //             return 'Mülakat yapılmadı';
+                //         }
                         
-                        // Turkish translations for interview status
-                        return match ($interview->status) {
-                            'scheduled' => 'Planlandı',
-                            'completed' => 'Tamamlandı',
-                            'canceled' => 'İptal Edildi',
-                            'rescheduled' => 'Yeniden Planlandı',
-                            'no_show' => 'Katılım Olmadı',
-                            'confirmed' => 'Onaylandı',
-                            default => $interview->status,
-                        };
-                    })
-                    ->badge()
-                    ->colors([
-                        'primary' => fn ($state) => $state === 'Planlandı',
-                        'success' => fn ($state) => $state === 'Tamamlandı' || $state === 'Onaylandı',
-                        'danger' => fn ($state) => $state === 'İptal Edildi' || $state === 'Katılım Olmadı',
-                        'warning' => fn ($state) => $state === 'Yeniden Planlandı',
-                        'secondary' => fn ($state) => $state === 'Mülakat yapılmadı',
-                    ]),
+                //         // Turkish translations for interview status
+                //         return match ($interview->status) {
+                //             'scheduled' => 'Planlandı',
+                //             'completed' => 'Tamamlandı',
+                //             'canceled' => 'İptal Edildi',
+                //             'rescheduled' => 'Yeniden Planlandı',
+                //             'no_show' => 'Katılım Olmadı',
+                //             'confirmed' => 'Onaylandı',
+                //             default => $interview->status,
+                //         };
+                //     })
+                //     ->badge()
+                //     ->colors([
+                //         'primary' => fn ($state) => $state === 'Planlandı',
+                //         'success' => fn ($state) => $state === 'Tamamlandı' || $state === 'Onaylandı',
+                //         'danger' => fn ($state) => $state === 'İptal Edildi' || $state === 'Katılım Olmadı',
+                //         'warning' => fn ($state) => $state === 'Yeniden Planlandı',
+                //         'secondary' => fn ($state) => $state === 'Mülakat yapılmadı',
+                //     ]),
                 
                 Tables\Columns\TextColumn::make('interview_detail')
                     ->label('Mülakat Detayı')
@@ -1185,7 +1186,9 @@ Forms\Components\Grid::make()
                     Tables\Columns\IconColumn::make('are_documents_approved')
                     ->label('Evraklar Onaylı')
                     ->boolean()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    // Use the stored value directly instead of recalculating it
+                    // This value is now managed by the ApplicationObserver and Documents model
+                    ->toggleable(isToggledHiddenByDefault: false),
                 Tables\Columns\IconColumn::make('is_interview_completed')
                     ->label('Mülakat Tamamlandı')
                     ->boolean()
@@ -1225,6 +1228,7 @@ Forms\Components\Grid::make()
                     ->label('Görüntüle'),
                 Tables\Actions\EditAction::make()
                     ->label('Düzenle'),
+             
                 Tables\Actions\DeleteAction::make()
                     ->color('danger')
                     ->label('Sil')
@@ -1250,60 +1254,138 @@ Forms\Components\Grid::make()
                     ->label('Evrak Durumu Kontrol')
                     ->icon('heroicon-o-clipboard-document-list')
                     ->color('warning')
-                    ->visible(fn (Applications $record): bool => !$record->are_documents_approved)
+                    ->visible(fn (Applications $record): bool => $record->status !== 'kabul_edildi' && $record->status !== 'accepted' && $record->status !== 'final_acceptance' && $record->status !== 'mulakat_havuzu' && $record->status !== 'mulakat_planlandi' && $record->status !== 'mulakat_tamamlandi' && $record->status !== 'dogrulama_tamamlandı' && $record->status !== 'dogrulama_tamamlandi' && $record->status !== 'Mülakat Planlandı' && $record->status !== 'interview_completed' && $record->status !== 'interview_scheduled'&& $record->status !== 'rejected'&& $record->status !== 'interview_pool')
                     ->action(function (Applications $record) {
-                        // Program ID'sini al
-                        $programId = $record->program_id;
-                        
-                        // Gerekli belgeleri kontrol et
-                        $requiredDocTypes = \App\Models\ProgramDocumentRequirement::where('program_id', $programId)
-                            ->pluck('document_type_id')
-                            ->toArray();
-                        
-                        if (empty($requiredDocTypes)) {
+                        // Eğer başvuru zaten kabul edilmiş veya son aşamada ise durum değiştirme
+                        if (in_array($record->status, ['kabul_edildi', 'accepted', 'final_acceptance', 'mulakat_planlandi'])) {
                             Notification::make()
-                                ->title('Program için evrak tanımlanmamış')
-                                ->body('Bu program için gerekli evraklar tanımlanmamış.')
+                                ->title('Başvuru Zaten Kabul Edilmiş')
+                                ->body('Bu başvuru zaten kabul edilmiş durumda olduğu için evrak kontrolü yapılmıyor.')
                                 ->warning()
                                 ->send();
                             return;
                         }
                         
-                        // Kullanıcı belgelerini al
-                        $userDocTypes = $record->documents()
-                            ->where('status', 'approved')
+                        // 1. Program gereksinimleri kontrolü
+                        $programId = $record->program_id;
+                        $requiredDocTypes = \App\Models\ProgramDocumentRequirement::where('program_id', $programId)
                             ->pluck('document_type_id')
                             ->toArray();
                         
-                        // Eksik belgeleri bul
-                        $missingDocTypes = array_diff($requiredDocTypes, $userDocTypes);
+                        // 2. Kullanıcının yüklediği belgeler
+                        $userDocuments = $record->documents()->get();
+                        $userDocTypes = $userDocuments->pluck('document_type_id')->toArray();
                         
-                        if (empty($missingDocTypes)) {
-                            // Tüm belgeler tamamlanmış, durumu güncelle
+                        // Program gereksinimi tanımlanmamışsa mesaj göster
+                        if (empty($requiredDocTypes)) {
+                            Notification::make()
+                                ->title('Program Gereksinimleri Tanımlanmamış')
+                                ->body('Bu program için gerekli evrak tanımları yapılmamış. Sadece onay durumu kontrolü yapılacak.')
+                                ->warning()
+                                ->send();
+                            
+                            // Evrak yoksa hata ver
+                            if ($userDocuments->isEmpty()) {
+                                Notification::make()
+                                    ->title('Evrak Bulunamadı')
+                                    ->body('Başvuru için hiç belge yüklenmemiş.')
+                                    ->warning()
+                                    ->send();
+                                return;
+                            }
+                            
+                            // Onay durumu kontrolü
+                            $pendingDocs = $userDocuments->filter(function($doc) {
+                                return $doc->status !== 'approved';
+                            });
+                            
+                            if ($pendingDocs->isEmpty()) {
+                                // Tüm belgeler onaylanmış
+                                $record->are_documents_approved = true;
+                                $record->status = 'dogrulama_tamamlandi';
+                                $record->save();
+                                
+                                Notification::make()
+                                    ->title('Evraklar Tam ve Onaylı')
+                                    ->body('Tüm yüklenen evraklar onaylanmış. Başvuru mülakat aşamasına geçebilir.')
+                                    ->success()
+                                    ->send();
+                            } else {
+                                // Onaylanmamış evraklar var
+                                $pendingNames = $pendingDocs->map(function($doc) {
+                                    return $doc->documentType ? $doc->documentType->name : 'Bilinmeyen belge';
+                                })->join(', ');
+                                
+                                $record->are_documents_approved = false; // Explicitly set to false
+                                $record->status = 'awaiting_documents';
+                                $record->save();
+                                
+                                Notification::make()
+                                    ->title('Onaylanmamış Evraklar')
+                                    ->body("Aşağıdaki evraklar henüz onaylanmamış: $pendingNames")
+                                    ->warning()
+                                    ->send();
+                            }
+                            
+                            return;
+                        }
+                        
+                        // Program gereksinimleri tanımlıysa, eksik belgeleri kontrol et
+                        $missingDocTypes = array_diff(
+                            array_map('strval', $requiredDocTypes), 
+                            array_map('strval', $userDocTypes)
+                        );
+                        
+                        if (!empty($missingDocTypes)) {
+                            // Eksik evraklar var, kullanıcıya bildir
+                            $missingDocNames = \App\Models\DocumentType::whereIn('id', $missingDocTypes)
+                                ->pluck('name')
+                                ->join(', ');
+                            
+                            $record->are_documents_approved = false; // Explicitly set to false
+                            $record->status = 'awaiting_documents';
+                            $record->save();
+                            
+                            Notification::make()
+                                ->title('Eksik Evraklar')
+                                ->body("Program için gerekli olan şu evraklar eksik: $missingDocNames")
+                                ->warning()
+                                ->send();
+                            return;
+                        }
+                        
+                        // Bu noktada program gereksinimlerini karşılayan tüm belgeler yüklendi
+                        // Şimdi onay durumlarını kontrol edelim
+                        $pendingDocs = $userDocuments->filter(function($doc) use ($requiredDocTypes) {
+                            return in_array($doc->document_type_id, $requiredDocTypes, false) && $doc->status !== 'approved';
+                        });
+                        
+                        if ($pendingDocs->isNotEmpty()) {
+                            // Onaylanmamış belgeler var
+                            $pendingNames = $pendingDocs->map(function($doc) {
+                                return $doc->documentType ? $doc->documentType->name : 'Bilinmeyen belge';
+                            })->join(', ');
+                            
+                            $record->are_documents_approved = false; // Explicitly set to false
+                            $record->status = 'awaiting_documents';
+                            $record->save();
+                            
+                            Notification::make()
+                                ->title('Onaylanmamış Evraklar')
+                                ->body("Aşağıdaki evraklar henüz onaylanmamış: $pendingNames")
+                                ->warning()
+                                ->send();
+                        } else {
+                            // Tüm gerekli belgeler yüklenmiş ve onaylanmış
                             $record->are_documents_approved = true;
                             $record->status = 'dogrulama_tamamlandi';
                             $record->save();
                             
                             Notification::make()
-                                ->title('Evraklar Tam')
-                                ->body('Tüm gerekli evraklar onaylanmış. Başvuru mülakat aşamasına geçebilir.')
+                                ->title('Evraklar Tam ve Onaylı')
+                                ->body('Tüm gerekli evraklar yüklenmiş ve onaylanmış. Başvuru mülakat aşamasına geçebilir.')
                                 ->success()
                                 ->send();
-                        } else {
-                            // Eksik belgeler var, kullanıcıya bildir
-                            $missingDocNames = \App\Models\DocumentType::whereIn('id', $missingDocTypes)
-                                ->pluck('name')
-                                ->join(', ');
-                            
-                            Notification::make()
-                                ->title('Eksik Evraklar')
-                                ->body("Aşağıdaki evraklar eksik veya onaylanmamış: $missingDocNames")
-                                ->warning()
-                                ->send();
-                                
-                            // Belgeler eksik, durumu güncelle
-                            $record->status = 'awaiting_documents';
-                            $record->save();
                         }
                     }),
                 
@@ -1317,7 +1399,7 @@ Forms\Components\Grid::make()
                             return 'Mülakata Aktarıldı ✓';
                         }
                         
-                        return 'Mülakata Davet';
+                        return 'Mülakat Planla';
                     })
                     ->icon('heroicon-o-calendar')
                     ->color(function (Applications $record) {
@@ -1340,8 +1422,15 @@ Forms\Components\Grid::make()
                                 ->exists();
                     })
                     ->form([
+                        Forms\Components\DateTimePicker::make('scheduled_date')
+                            ->label('Mülakat Tarihi ve Saati')
+                            ->required()
+                            ->minDate(now())
+                            ->seconds(false)
+                            ->displayFormat('d/m/Y H:i')
+                            ->native(false),
                         Forms\Components\Select::make('interviewer_id')
-                            ->label('Görüşmeci')
+                            ->label('Mülakatçı')
                             ->options(
                                 \App\Models\User::query()
                                     ->where('is_admin', true)
@@ -1351,19 +1440,38 @@ Forms\Components\Grid::make()
                             )
                             ->required()
                             ->searchable(),
-                        Forms\Components\DateTimePicker::make('interview_date')
-                            ->label('Mülakat Tarihi')
-                            ->seconds(false)
-                            ->displayFormat('d/m/Y H:i')
-                            ->native(false)
-                            ->required(),
                         Forms\Components\TextInput::make('location')
                             ->label('Konum')
                             ->placeholder('Örn: Ana Bina, Oda 203'),
+                        Forms\Components\Toggle::make('is_online')
+                            ->label('Online Mülakat mı?')
+                            ->default(false)
+                            ->reactive()
+                            ->afterStateUpdated(function ($state, $set) {
+                                if (!$state) {
+                                    $set('meeting_link', null); // Link alanını temizle
+                                }
+                            }),
                         Forms\Components\TextInput::make('meeting_link')
-                            ->label('Görüşme Linki')
+                            ->label('Toplantı Linki')
                             ->prefix('https://')
-                            ->placeholder('Zoom veya Google Meet linki'),
+                            ->placeholder('Zoom veya Google Meet linki')
+                            ->visible(fn (callable $get) => $get('is_online'))
+                            ->dehydrateStateUsing(function ($state) {
+                                if (empty($state)) {
+                                    return null;
+                                }
+                                
+                                // URL'e http veya https ön eki yoksa ekle
+                                if (!preg_match('~^(?:f|ht)tps?://~i', $state)) {
+                                    return 'https://' . $state;
+                                }
+                                
+                                return $state;
+                            }),
+                        Forms\Components\Textarea::make('notes')
+                            ->label('Notlar')
+                            ->maxLength(65535),
                     ])
                     ->action(function (Applications $record, array $data) {
                         // Önce mülakata aktarma işlemini gerçekleştir (eğer henüz aktarılmamışsa)
@@ -1405,22 +1513,31 @@ Forms\Components\Grid::make()
                         
                         // Mülakat bilgilerini güncelle
                         $interview->interviewer_admin_id = $data['interviewer_id'];
-                        $interview->scheduled_date = $data['interview_date'];
+                        $interview->scheduled_date = $data['scheduled_date'];
+                        $interview->interview_date = $data['scheduled_date'];
                         $interview->location = $data['location'] ?? null;
+                        $interview->is_online = $data['is_online'] ?? false;
                         $interview->meeting_link = $data['meeting_link'] ?? null;
+                        $interview->notes = $data['notes'] ?? null;
                         $interview->status = 'scheduled';
                         $interview->save();
                         
                         // Başvuru durumunu güncelle
                         $record->is_interview_scheduled = true;
                         $record->status = 'interview_scheduled';
+                        $record->interview_pool_at = now();
+                        $record->interview_pool_by = auth()->id();
                         $record->save();
                         
                         Notification::make()
                             ->title('Mülakat başarıyla planlandı')
                             ->success()
                             ->send();
-                    }),
+                    })
+                    ->modalHeading('Mülakat Planla')
+                    ->modalDescription('Lütfen mülakat detaylarını girin')
+                    ->modalSubmitActionLabel('Planla')
+                    ->modalCancelActionLabel('İptal'),
                 
                 Tables\Actions\Action::make('complete_interview')
                     ->label('Mülakatı Tamamla')
@@ -1477,87 +1594,91 @@ Forms\Components\Grid::make()
                             ->send();
                     }),
                 
-                Tables\Actions\Action::make('transfer_scholarship')
-                    ->label('Bursa Aktar')
-                    ->icon('heroicon-o-currency-dollar')
-                    ->color('success')
-                    ->button() // Buton olarak görünsün
-                    ->visible(fn (Applications $record): bool => 
-                        $record->are_documents_approved && 
-                        $record->is_interview_completed && 
-                        $record->interview_result === 'passed' &&
-                        !$record->scholarships()->exists())
-                    ->form([
-                        Forms\Components\Select::make('scholarship_amount')
-                            ->label('Burs Miktarı (₺)')
-                            ->options([
-                                '500' => '500 ₺',
-                                '750' => '750 ₺',
-                                '1000' => '1000 ₺',
-                                '1500' => '1500 ₺',
-                                '2000' => '2000 ₺',
-                                '2500' => '2500 ₺',
-                                '3000' => '3000 ₺',
-                                '3500' => '3500 ₺',
-                                '4000' => '4000 ₺',
-                                '5000' => '5000 ₺',
-                            ])
-                            ->required(),
-                        Forms\Components\DatePicker::make('scholarship_start_date')
-                            ->label('Burs Başlangıç Tarihi')
-                            ->required()
-                            ->minDate(now()),
-                        Forms\Components\DatePicker::make('scholarship_end_date')
-                            ->label('Burs Bitiş Tarihi')
-                            ->required()
-                            ->minDate(function ($get) {
-                                $startDate = $get('scholarship_start_date');
-                                return $startDate ? \Illuminate\Support\Carbon::parse($startDate)->addMonths(1) : now()->addMonths(1);
-                            }),
-                        Forms\Components\Textarea::make('notes')
-                            ->label('Notlar')
-                            ->maxLength(65535),
-                    ])
-                    ->action(function (Applications $record, array $data) {
-                        // Başvuru durumunu güncelle
-                        $record->status = 'kabul_edildi';
-                        $record->approval_date = now();
-                        $record->approval_notes = $data['notes'] ?? null;
-                        $record->scholarship_amount = $data['scholarship_amount'];
-                        $record->scholarship_start_date = $data['scholarship_start_date'];
-                        $record->scholarship_end_date = $data['scholarship_end_date'];
-                        $record->save();
+                // Tables\Actions\Action::make('transfer_scholarship')
+                //     ->label('Bursa Aktar')
+                //     ->icon('heroicon-o-currency-dollar')
+                //     ->color('success')
+                //     ->button() // Buton olarak görünsün
+                //     ->visible(fn (Applications $record): bool => 
+                //         $record->are_documents_approved && 
+                //         $record->is_interview_completed && 
+                //         $record->interview_result === 'passed' &&
+                //         !$record->scholarships()->exists())
+                //     ->form([
+                //         Forms\Components\Select::make('scholarship_amount')
+                //             ->label('Burs Miktarı (₺)')
+                //             ->options([
+                //                 '500' => '500 ₺',
+                //                 '750' => '750 ₺',
+                //                 '1000' => '1000 ₺',
+                //                 '1500' => '1500 ₺',
+                //                 '2000' => '2000 ₺',
+                //                 '2500' => '2500 ₺',
+                //                 '3000' => '3000 ₺',
+                //                 '3500' => '3500 ₺',
+                //                 '4000' => '4000 ₺',
+                //                 '5000' => '5000 ₺',
+                //             ])
+                //             ->required(),
+                //         Forms\Components\DatePicker::make('scholarship_start_date')
+                //             ->label('Burs Başlangıç Tarihi')
+                //             ->required()
+                //             ->minDate(now()),
+                //         Forms\Components\DatePicker::make('scholarship_end_date')
+                //             ->label('Burs Bitiş Tarihi')
+                //             ->required()
+                //             ->minDate(function ($get) {
+                //                 $startDate = $get('scholarship_start_date');
+                //                 return $startDate ? \Illuminate\Support\Carbon::parse($startDate)->addMonths(1) : now()->addMonths(1);
+                //             }),
+                //         Forms\Components\Textarea::make('notes')
+                //             ->label('Notlar')
+                //             ->maxLength(65535),
+                //     ])
+                //     ->action(function (Applications $record, array $data) {
+                //         // Başvuru durumunu güncelle
+                //         $record->status = 'kabul_edildi';
+                //         $record->approval_date = now();
+                //         $record->approval_notes = $data['notes'] ?? null;
+                //         $record->scholarship_amount = $data['scholarship_amount'];
+                //         $record->scholarship_start_date = $data['scholarship_start_date'];
+                //         $record->scholarship_end_date = $data['scholarship_end_date'];
+                //         $record->save();
                         
-                        // Burs kaydı oluştur
-                        \App\Models\Scholarships::create([
-                            'user_id' => $record->user_id,
-                            'program_id' => $record->program_id,
-                            'application_id' => $record->id,
-                            'approved_by' => auth()->id(),
-                            'name' => 'Standart Burs',
-                            'start_date' => \Carbon\Carbon::parse($data['scholarship_start_date'])->format('Y-m-d'),
-                            'end_date' => \Carbon\Carbon::parse($data['scholarship_end_date'])->format('Y-m-d'),
-                            'amount' => (float) $data['scholarship_amount'],
-                            'status' => 'active',
-                            'notes' => $data['notes'] ?? null,
-                        ]);
+                //         // Burs kaydı oluştur
+                //         \App\Models\Scholarships::create([
+                //             'user_id' => $record->user_id,
+                //             'program_id' => $record->program_id,
+                //             'application_id' => $record->id,
+                //             'approved_by' => auth()->id(),
+                //             'name' => 'Standart Burs',
+                //             'start_date' => \Carbon\Carbon::parse($data['scholarship_start_date'])->format('Y-m-d'),
+                //             'end_date' => \Carbon\Carbon::parse($data['scholarship_end_date'])->format('Y-m-d'),
+                //             'amount' => (float) $data['scholarship_amount'],
+                //             'status' => 'active',
+                //             'notes' => $data['notes'] ?? null,
+                //         ]);
                         
-                        // Bildirimi göster
-                        \Filament\Notifications\Notification::make()
-                            ->title('Burs Kaydı Oluşturuldu')
-                            ->body('Başvuru için burs kaydı başarıyla oluşturuldu.')
-                            ->success()
-                            ->send();
-                    })
-                    ->requiresConfirmation()
-                    ->modalHeading('Bursa Aktar')
-                    ->modalDescription('Bu başvuru için burs kaydı oluşturmak üzeresiniz.')
-                    ->modalSubmitActionLabel('Burs Kaydı Oluştur'),
+                //         // Bildirimi göster
+                //         \Filament\Notifications\Notification::make()
+                //             ->title('Burs Kaydı Oluşturuldu')
+                //             ->body('Başvuru için burs kaydı başarıyla oluşturuldu.')
+                //             ->success()
+                //             ->send();
+                //     })
+                //     ->requiresConfirmation()
+                //     ->modalHeading('Bursa Aktar')
+                //     ->modalDescription('Bu başvuru için burs kaydı oluşturmak üzeresiniz.')
+                //     ->modalSubmitActionLabel('Burs Kaydı Oluştur'),
                 
+
+                    
                 Tables\Actions\Action::make('reject_application')
                     ->label('Reddet')
                     ->icon('heroicon-o-x-mark')
                     ->color('danger')
+                    ->visible(fn (): bool => true)
+                    // ->visible(fn (Applications $record): bool => !in_array($record->status, ['red_edildi', 'rejected', 'mulakat_havuzu', 'mulakat_planlandi', 'mulakat_tamamlandi', 'dogrulama_tamamlandi', 'dogrulama_tamamlandı']))
                     ->form([
                         Forms\Components\Textarea::make('rejection_reason')
                             ->label('Ret Sebebi')
@@ -1595,111 +1716,175 @@ Forms\Components\Grid::make()
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make()
-                        ->label('Sil'),
+                        ->label(' Tümünü Sil'),
                   
                     // Yeni eklenen toplu aksiyonlar
-                    Tables\Actions\BulkAction::make('bulk_check_documents')
-                        ->label('Evrak Kontrol')
-                        ->icon('heroicon-o-clipboard-document-list')
-                        ->color('warning')
-                        ->deselectRecordsAfterCompletion()
-                        ->action(function (Collection $records) {
-                            $success = 0;
-                            $missing = 0;
-                            $noRequirements = 0;
+                    // Tables\Actions\BulkAction::make('bulk_check_documents')
+                    //     ->label('Evrak Kontrol')
+                    //     ->icon('heroicon-o-clipboard-document-list')
+                    //     ->color('warning')
+                    //     ->deselectRecordsAfterCompletion()
+                    //     ->action(function (Collection $records) {
+                    //         $success = 0;
+                    //         $missing = 0;
+                    //         $noDocuments = 0;
+                    //         $noRequirements = 0;
+                    //         $alreadyAccepted = 0;
                             
-                            foreach ($records as $record) {
-                                // Program ID'sini al
-                                $programId = $record->program_id;
+                    //         foreach ($records as $record) {
+                    //             // Eğer başvuru zaten kabul edilmiş durumda ise durumu değiştirme
+                    //             if (in_array($record->status, ['kabul_edildi', 'accepted', 'final_acceptance', 'dogrulama_tamamlandi', 'dogrulama_tamamlandı', 'mulakat_havuzu', 'mulakat_planlandi', 'mulakat_tamamlandi'])) {
+                    //                 $alreadyAccepted++;
+                    //                 continue;
+                    //             }
                                 
-                                // Gerekli belgeleri kontrol et
-                                $requiredDocTypes = \App\Models\ProgramDocumentRequirement::where('program_id', $programId)
-                                    ->pluck('document_type_id')
-                                    ->toArray();
+                    //             // 1. Program gereksinimleri kontrolü
+                    //             $programId = $record->program_id;
+                    //             $requiredDocTypes = \App\Models\ProgramDocumentRequirement::where('program_id', $programId)
+                    //                 ->pluck('document_type_id')
+                    //                 ->toArray();
+                                    
+                    //             // 2. Kullanıcının yüklediği belgeler
+                    //             $userDocuments = $record->documents()->get();
+                    //             $userDocTypes = $userDocuments->pluck('document_type_id')->toArray();
                                 
-                                if (empty($requiredDocTypes)) {
-                                    $noRequirements++;
-                                    continue; // Bu program için belge gereksinimleri bulunmadığından bir sonraki kayda geç
-                                }
+                    //             // Program gereksinimi tanımlanmamışsa sadece onay kontrolü yap
+                    //             if (empty($requiredDocTypes)) {
+                    //                 $noRequirements++;
+                                    
+                    //                 // Evrak yoksa geç
+                    //                 if ($userDocuments->isEmpty()) {
+                    //                     $noDocuments++;
+                    //                     $record->are_documents_approved = false; // Explicitly set to false
+                    //                     $record->save();
+                    //                     continue;
+                    //                 }
+                                    
+                    //                 // Onay durumu kontrolü
+                    //                 $pendingDocs = $userDocuments->filter(function($doc) {
+                    //                     return $doc->status !== 'approved';
+                    //                 });
+                                    
+                    //                 if ($pendingDocs->isEmpty()) {
+                    //                     // Tüm belgeler onaylanmış
+                    //                     $record->are_documents_approved = true;
+                    //                     $record->status = 'dogrulama_tamamlandi';
+                    //                     $record->save();
+                    //                     $success++;
+                    //                 } else {
+                    //                     // Bazı belgeler onaylanmamış
+                    //                     $record->are_documents_approved = false; // Explicitly set to false
+                    //                     $record->status = 'awaiting_documents';
+                    //                     $record->save();
+                    //                     $missing++;
+                    //                 }
+                                    
+                    //                 continue; // Bir sonraki başvuruya geç
+                    //             }
                                 
-                                // Kullanıcı belgelerini al
-                                $userDocTypes = $record->documents()
-                                    ->where('status', 'approved')
-                                    ->pluck('document_type_id')
-                                    ->toArray();
+                    //             // Program gereksinimleri tanımlıysa, eksik belgeleri kontrol et
+                    //             $missingDocTypes = array_diff(
+                    //                 array_map('strval', $requiredDocTypes), 
+                    //                 array_map('strval', $userDocTypes)
+                    //             );
                                 
-                                // Eksik belgeleri bul
-                                $missingDocTypes = array_diff($requiredDocTypes, $userDocTypes);
+                    //             if (!empty($missingDocTypes)) {
+                    //                 // Eksik evraklar var
+                    //                 $record->are_documents_approved = false; // Explicitly set to false
+                    //                 $record->status = 'awaiting_documents';
+                    //                 $record->save();
+                    //                 $missing++;
+                    //                 continue; // Bir sonraki başvuruya geç
+                    //             }
                                 
-                                if (empty($missingDocTypes)) {
-                                    // Tüm belgeler tamamlanmış, durumu güncelle
-                                    $record->are_documents_approved = true;
-                                    $record->status = 'dogrulama_tamamlandi';
-                                    $record->save();
-                                    $success++;
-                                } else {
-                                    // Belgeler eksik, durumu güncelle
-                                    $record->status = 'awaiting_documents';
-                                    $record->save();
-                                    $missing++;
-                                }
-                            }
+                    //             // Bu noktada program gereksinimlerini karşılayan tüm belgeler yüklendi
+                    //             // Şimdi onay durumlarını kontrol edelim
+                    //             $pendingDocs = $userDocuments->filter(function($doc) use ($requiredDocTypes) {
+                    //                 return in_array($doc->document_type_id, $requiredDocTypes, false) && $doc->status !== 'approved';
+                    //             });
+                                
+                    //             if ($pendingDocs->isEmpty()) {
+                    //                 // Tüm gerekli belgeler yüklenmiş ve onaylanmış
+                    //                 $record->are_documents_approved = true;
+                    //                 $record->status = 'dogrulama_tamamlandi';
+                    //                 $record->save();
+                    //                 $success++;
+                    //             } else {
+                    //                 // Bazı belgeler onaylanmamış
+                    //                 $record->are_documents_approved = false; // Explicitly set to false
+                    //                 $record->status = 'awaiting_documents';
+                    //                 $record->save();
+                    //                 $missing++;
+                    //             }
+                    //         }
                             
-                            $message = "$success başvuru için evraklar tam, $missing başvuru için eksik evrak bulundu.";
-                            if ($noRequirements > 0) {
-                                $message .= " $noRequirements başvuru için evrak gereksinimleri tanımlanmamış.";
-                            }
+                    //         $message = "$success başvuru için evraklar tam ve onaylı, $missing başvuru için eksik veya onaylanmamış evrak bulundu.";
+                    //         if ($alreadyAccepted > 0) {
+                    //             $message .= " $alreadyAccepted başvuru zaten kabul edilmiş durumda.";
+                    //         }
+                    //         if ($noDocuments > 0) {
+                    //             $message .= " $noDocuments başvuru için hiç belge yüklenmemiş.";
+                    //         }
+                    //         if ($noRequirements > 0) {
+                    //             $message .= " $noRequirements başvuru için evrak gereksinimleri tanımlanmamış.";
+                    //         }
                             
-                            \Filament\Notifications\Notification::make()
-                                ->title('Evrak Kontrolü Tamamlandı')
-                                ->body($message)
-                                ->success()
-                                ->send();
-                        }),
+                    //         \Filament\Notifications\Notification::make()
+                    //             ->title('Evrak Kontrolü Tamamlandı')
+                    //             ->body($message)
+                    //             ->success()
+                    //             ->send();
+                    //     }),
                     
-                    Tables\Actions\BulkAction::make('bulk_move_to_interview_pool')
-                        ->label('Toplu Mülakata Aktar')
-                        ->icon('heroicon-o-arrow-right-circle')
-                        ->color('primary')
-                        ->deselectRecordsAfterCompletion()
-                        ->requiresConfirmation()
-                        ->action(function (Collection $records) {
-                            $moved = 0;
-                            $notMoved = 0;
+                    // Tables\Actions\BulkAction::make('bulk_move_to_interview_pool')
+                    //     ->label('Toplu Mülakata Aktar')
+                    //     ->icon('heroicon-o-arrow-right-circle')
+                    //     ->color('primary')
+                    //     ->deselectRecordsAfterCompletion()
+                    //     ->requiresConfirmation()
+                    //     ->action(function (Collection $records) {
+                    //         $moved = 0;
+                    //         $notMoved = 0;
                             
-                            foreach ($records as $record) {
-                                if ($record->are_documents_approved && !$record->is_interview_scheduled) {
-                                    $record->status = 'mulakat_havuzu';
-                                    $record->save();
+                    //         foreach ($records as $record) {
+                    //             if ($record->are_documents_approved && !$record->is_interview_scheduled) {
+                    //                 $record->status = 'mulakat_havuzu';
+                    //                 $record->save();
                                     
-                                    // Ön bir mülakat kaydı oluşturalım ki InterviewManagementResource'da görünsün
-                                    \App\Models\Interviews::create([
-                                        'application_id' => $record->id,
-                                        'user_id' => $record->user_id,
-                                        'interviewer_admin_id' => auth()->id(), // Şimdilik oluşturan kişi
-                                        'status' => 'awaiting_schedule', // Özel durum: Henüz planlanmamış
-                                        'created_at' => now(),
-                                        'interview_date' => now()->addDay(), // Add interview_date field with a default value
-                                        'notes' => 'Bu mülakat henüz planlanmamıştır. Lütfen planlamayı yapın.'
-                                    ]);
+                    //                 // Ön bir mülakat kaydı oluşturalım ki InterviewManagementResource'da görünsün
+                    //                 \App\Models\Interviews::create([
+                    //                     'application_id' => $record->id,
+                    //                     'user_id' => $record->user_id,
+                    //                     'interviewer_admin_id' => auth()->id(), // Şimdilik oluşturan kişi
+                    //                     'status' => 'awaiting_schedule', // Özel durum: Henüz planlanmamış
+                    //                     'created_at' => now(),
+                    //                     'interview_date' => now()->addDay(), // Add interview_date field with a default value
+                    //                     'notes' => 'Bu mülakat henüz planlanmamıştır. Lütfen planlamayı yapın.'
+                    //                 ]);
                                     
-                                    $moved++;
-                                } else {
-                                    $notMoved++;
-                                }
-                            }
+                    //                 $moved++;
+                    //             } else {
+                    //                 $notMoved++;
+                    //             }
+                    //         }
                             
-                            \Filament\Notifications\Notification::make()
-                                ->title('Mülakata Aktarıldı')
-                                ->body("$moved başvuru mülakat havuzuna aktarıldı. $notMoved başvuru için evrak onayı eksik veya zaten mülakata aktarılmış.")
-                                ->success()
-                                ->send();
-                        }),
+                    //         \Filament\Notifications\Notification::make()
+                    //             ->title('Mülakata Aktarıldı')
+                    //             ->body("$moved başvuru mülakat havuzuna aktarıldı. $notMoved başvuru için evrak onayı eksik veya zaten mülakata aktarılmış.")
+                    //             ->success()
+                    //             ->send();
+                    //     }),
+
+
                         
                     Tables\Actions\BulkAction::make('bulk_reject')
                         ->label('Toplu Reddet')
                         ->icon('heroicon-o-x-mark')
                         ->color('danger')
+                        ->visible(fn (?Collection $records): bool => $records && $records->contains(
+                            fn (Applications $record) => !in_array($record->status, ['red_edildi', 'rejected', 'mulakat_havuzu', 'mulakat_planlandi', 'mulakat_tamamlandi', 'dogrulama_tamamlandi', 'dogrulama_tamamlandı'])
+                        ))
+                    
                         ->form([
                             Forms\Components\Textarea::make('rejection_reason')
                                 ->label('Ret Sebebi')
@@ -1735,7 +1920,9 @@ Forms\Components\Grid::make()
                         ->modalHeading('Başvurular reddedilsin mi?')
                         ->modalDescription('Seçili başvuruları reddetmek istediğinizden emin misiniz? Bu işlem geri alınamaz.')
                         ->modalSubmitActionLabel('Evet, Reddet'),
-                ]),
+                ])
+
+                ->label('Başvuru İşlemleri'),
             ]);
     }
   

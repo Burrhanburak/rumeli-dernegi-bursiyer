@@ -14,6 +14,10 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use App\Models\Applications;
+use App\Models\ProgramDocumentRequirement;
+use App\Models\DocumentType;
+use Filament\Notifications\Notification;
 
 class DocumentResource extends Resource
 {
@@ -55,10 +59,12 @@ class DocumentResource extends Resource
                             ->maxLength(255),
                         Forms\Components\FileUpload::make('file_path')
                             ->label('Dosya')
+                            ->placeholder('Yüklemek istediğiniz dosyayı seçiniz')
                             ->required()
                             ->disk('public')
                             ->directory('documents')
                             ->visibility('private')
+                            ->image()
                             ->maxSize(5120), // 5MB
                         Forms\Components\Textarea::make('description')
                             ->label('Açıklama')
@@ -91,6 +97,12 @@ class DocumentResource extends Resource
                 Tables\Actions\CreateAction::make()
                     ->label('Yeni Belgeler')
                     ->icon('heroicon-o-document-plus')
+                    ->successNotification(
+                        Notification::make()
+                            ->title('Yeni Belgeler Oluşturuldu')
+                            ->body('Yeni belgeler başarıyla oluşturuldu.')
+                            ->success()
+                    ),
             ])
             ->columns([
                 Tables\Columns\ImageColumn::make('file_path')
@@ -125,10 +137,7 @@ class DocumentResource extends Resource
                         default => 'Beklemede',
                     })
                     ->sortable(),
-                Tables\Columns\TextColumn::make('created_at')
-                    ->label('Yükleme Tarihi')
-                    ->date()
-                    ->sortable(),
+             
                 Tables\Columns\TextColumn::make('verification_date')
                     ->label('Doğrulama Tarihi')
                     ->date()
@@ -158,8 +167,9 @@ class DocumentResource extends Resource
                         'rejected' => 'Reddedildi',
                     ]),
                 Tables\Filters\SelectFilter::make('document_type_id')
+                    ->label('Belge Türü')
                     ->relationship('documentType', 'name')
-                    ->label('Belge Türü'),
+                    ->searchable(),
             ])
             ->actions([
                 Tables\Actions\ViewAction::make()
@@ -177,7 +187,12 @@ class DocumentResource extends Resource
                     ->label('Onayla')
                     ->icon('heroicon-o-check')
                     ->color('success')
-                    ->requiresConfirmation()
+                    ->modalHeading('Belge Onayı')
+                    ->modalDescription('Bu belgeyi onaylamak istediğinizden emin misiniz?')
+                    ->modalCancelActionLabel('İptal')
+                    ->modalSubmitActionLabel('Evet, Onayla')
+                    ->modalSubheading('Bu işlemi onaylamak istediğinizden emin misiniz?')
+                    ->modalWidth('sm')
                     ->action(function ($record) {
                         $record->update([
                             'status' => 'approved',
@@ -185,46 +200,18 @@ class DocumentResource extends Resource
                             'reviewed_by' => auth()->id(),
                         ]);
                         
-                        // Belge onaylandıktan sonra başvurunun diğer belgelerini kontrol edelim
+                        // Our application observer will automatically update the are_documents_approved flag
+                        // and the document model's boot method will trigger the checkDocumentApprovalStatus method
+                        
                         if ($record->application_id) {
                             $application = \App\Models\Applications::find($record->application_id);
                             if ($application) {
-                                // Program için gerekli belgeleri bulalım
-                                $requiredDocuments = \App\Models\ProgramDocumentRequirement::where('program_id', $application->program_id)
-                                    ->where('is_required', true)
-                                    ->pluck('document_type_id')
-                                    ->toArray();
-                                
-                                // Kullanıcının onaylanan belgelerini bulalım
-                                $approvedDocuments = \App\Models\Documents::where('application_id', $application->id)
-                                    ->where('status', 'approved')
-                                    ->pluck('document_type_id')
-                                    ->toArray();
-                                
-                                // Tüm gerekli belgeler onaylandı mı kontrol edelim
-                                $allApproved = true;
-                                foreach ($requiredDocuments as $docTypeId) {
-                                    if (!in_array($docTypeId, $approvedDocuments)) {
-                                        $allApproved = false;
-                                        break;
-                                    }
-                                }
-                                
-                                // Tüm belgeler onaylandıysa başvuru durumunu güncelle
-                                if ($allApproved && count($requiredDocuments) > 0) {
-                                    $application->are_documents_approved = true;
-                                    $application->status = 'dogrulama_tamamlandi';
-                                    $application->document_reviewed_by = auth()->id();
-                                    $application->document_reviewed_at = now();
-                                    $application->save();
-                                    
-                                    // Bildirim gösterelim
-                                    \Filament\Notifications\Notification::make()
-                                        ->title('Belgeler Doğrulandı')
-                                        ->body('Tüm gerekli belgeler onaylandı ve başvuru durumu güncellendi.')
-                                        ->success()
-                                        ->send();
-                                }
+                                // Show notification
+                                \Filament\Notifications\Notification::make()
+                                    ->title('Belge Onaylandı')
+                                    ->body('Belge başarıyla onaylandı.')
+                                    ->success()
+                                    ->send();
                             }
                         }
                     })
@@ -291,7 +278,7 @@ class DocumentResource extends Resource
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make()
-                        ->label('Sil')
+                        ->label('Toplu Belge Silme')
                         ->requiresConfirmation()
                         ->modalHeading('Belgeler silinsin mi?')
                         ->modalDescription('Seçili belgeleri silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.')
@@ -323,7 +310,10 @@ class DocumentResource extends Resource
                                 ]);
                             }
                         }),
-                ]),
+                ])
+
+         
+                ->label('Belge İşlemleri'),
             ]);
     }
 

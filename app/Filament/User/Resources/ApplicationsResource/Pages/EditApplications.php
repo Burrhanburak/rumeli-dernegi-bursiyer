@@ -5,7 +5,7 @@ namespace App\Filament\User\Resources\ApplicationsResource\Pages;
 use App\Filament\User\Resources\ApplicationsResource;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
-
+use Filament\Notifications\Notification;
 
 class EditApplications extends EditRecord
 {
@@ -41,5 +41,12 @@ class EditApplications extends EditRecord
         return parent::getCancelFormAction()
             ->label('İptal');
          
+    }
+
+    protected function getSavedNotification(): ?Notification
+    {
+        return Notification::make()
+            ->success()
+            ->title('Başvuru başarıyla güncellendi');
     }
 }

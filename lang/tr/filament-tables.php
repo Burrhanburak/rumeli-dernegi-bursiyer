@@ -8,7 +8,9 @@ return [
     ],
     'actions' => [
         'modal' => [
-            'requires_confirmation_subheading' => 'Bu işlemi onayladığınızdan emin misiniz?',
+            'requires_confirmation_subheading' => 'Bu işlemi onaylamak istediğinizden emin misiniz?',
+            'confirm' => 'Evet',
+            'cancel' => 'İptal',
         ],
     ],
     'empty' => [

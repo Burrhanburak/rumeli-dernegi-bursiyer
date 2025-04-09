@@ -71,10 +71,39 @@ class InterviewManagementResource extends Resource
                         Forms\Components\TextInput::make('location')
                             ->label('Konum')
                             ->maxLength(255),
+                        Forms\Components\Toggle::make('is_online')
+                            ->label('Online Mülakat mı?')
+                            ->inline(false)
+                            ->onIcon('heroicon-m-globe-alt')
+                            ->offIcon('heroicon-m-building-office')
+                            ->onColor('success')
+                            ->offColor('gray')
+                            ->default(fn (Interviews $record) => $record->is_online ?? false)
+                            ->live(),
                         Forms\Components\TextInput::make('meeting_link')
                             ->label('Toplantı Linki')
-                            ->url()
-                            ->maxLength(255),
+                            ->prefix('https://')
+                            ->placeholder('Örn: zoom.us/j/123456789')
+                            ->visible(fn (Forms\Get $get) => $get('is_online'))
+                            ->default(function (Interviews $record) {
+                                if ($record->meeting_link) {
+                                    // https:// prefix'ini kaldır
+                                    return preg_replace('~^https?://~i', '', $record->meeting_link);
+                                }
+                                return null;
+                            })
+                            ->dehydrateStateUsing(function ($state) {
+                                if (empty($state)) {
+                                    return null;
+                                }
+                                
+                                // URL'e http veya https ön eki yoksa ekle
+                                if (!preg_match('~^(?:f|ht)tps?://~i', $state)) {
+                                    return 'https://' . $state;
+                                }
+                                
+                                return $state;
+                            }),
                         Forms\Components\Select::make('status')
                             ->label('Durum')
                             ->options([
@@ -227,6 +256,10 @@ class InterviewManagementResource extends Resource
                     ->icon('heroicon-o-trash')
                     ->color('danger')
                     ->requiresConfirmation()
+                    ->modalHeading('Mülakat Silme')
+                    ->modalDescription('Bu mülakatı silmek istediğinizden emin misiniz?')
+                    ->modalSubmitActionLabel('Evet, Sil')
+                    ->modalCancelActionLabel('İptal')
                     ->form([
                         Forms\Components\Textarea::make('reason')
                             ->label('Silme Sebebi')
@@ -259,6 +292,10 @@ class InterviewManagementResource extends Resource
                             ->required()
                             ->default('pending'),
                     ])
+                    ->modalHeading('Mülakat Tamamla')
+                    ->modalDescription('Mülakatı tamamlamak istediğinize emin misiniz?')
+                    ->modalCancelActionLabel('İptal')
+                    ->modalSubmitActionLabel('Tamamla')
                     ->action(function (Interviews $record, array $data) {
                         // Mülakat bilgilerini güncelle
                         $record->status = 'completed';
@@ -311,8 +348,21 @@ class InterviewManagementResource extends Resource
                         }
                     })
                     ->visible(fn (Interviews $record): bool => 
-                        $record->status === 'completed' && 
-                        $record->application),
+                    $record->status === 'completed' && 
+                    $record->application &&  
+                    $record->application->status !== 'accepted' && 
+                    $record->application->status !== 'final_acceptance' && 
+                    $record->application->status !== 'mulakat_havuzu' && 
+                    $record->application->status !== 'mulakat_planlandi' && 
+                    // $record->application->status !== 'mulakat_tamamlandi' && 
+                    $record->application->status !== 'dogrulama_tamamlandı' && 
+                    $record->application->status !== 'dogrulama_tamamlandi' && 
+                    $record->application->status !== 'Mülakat Planlandı' && 
+                    $record->application->status !== 'interview_completed' && 
+                    $record->application->status !== 'interview_scheduled' && 
+                    $record->application->status !== 'rejected' && 
+                    $record->application->status !== 'interview_pool'
+                ),
                 Tables\Actions\Action::make('cancel')
                     ->label('İptal Et')
                     ->icon('heroicon-o-x-mark')
@@ -330,40 +380,95 @@ class InterviewManagementResource extends Resource
                     ->visible(fn (Interviews $record): bool => in_array($record->status, ['scheduled', 'confirmed'])),
                 Tables\Actions\Action::make('reschedule')
                     ->label('Yeniden Planla')
+                    ->modalDescription('Lütfen yeni tarih ve saat bilgilerini giriniz.')
+                    ->modalCancelActionLabel('İptal')
+                    ->modalSubmitActionLabel('Yeniden Planla')
                     ->icon('heroicon-o-calendar')
                     ->color('warning')
                     ->form([
                         Forms\Components\DateTimePicker::make('new_date')
                             ->label('Yeni Tarih & Saat')
-                            ->required(),
+                        ->required()
+                        ->minDate(now())
+                        ->seconds(false)
+                        ->displayFormat('d/m/Y H:i')
+                        ->native(false),
                         Forms\Components\TextInput::make('location')
                             ->label('Konum')
                             ->maxLength(255),
+                        Forms\Components\Toggle::make('is_online')
+                            ->label('Online Mülakat mı?')
+                            ->inline(false)
+                            ->onIcon('heroicon-m-globe-alt')
+                            ->offIcon('heroicon-m-building-office')
+                            ->onColor('success')
+                            ->offColor('gray')
+                            ->default(fn (Interviews $record) => $record->is_online ?? false)
+                            ->live(),
                         Forms\Components\TextInput::make('meeting_link')
                             ->label('Toplantı Linki')
-                            ->url()
-                            ->maxLength(255),
+                            ->prefix('https://')
+                            ->placeholder('Örn: zoom.us/j/123456789')
+                            ->visible(fn (Forms\Get $get) => $get('is_online'))
+                            ->default(function (Interviews $record) {
+                                if ($record->meeting_link) {
+                                    // https:// prefix'ini kaldır
+                                    return preg_replace('~^https?://~i', '', $record->meeting_link);
+                                }
+                                return null;
+                            })
+                            ->dehydrateStateUsing(function ($state) {
+                                if (empty($state)) {
+                                    return null;
+                                }
+                                
+                                // URL'e http veya https ön eki yoksa ekle
+                                if (!preg_match('~^(?:f|ht)tps?://~i', $state)) {
+                                    return 'https://' . $state;
+                                }
+                                
+                                return $state;
+                            }),
+                        Forms\Components\Textarea::make('notes')
+                            ->label('Notlar')
+                            ->placeholder('Yeniden planlama sebebi ve açıklama')
+                            ->maxLength(65535),
                     ])
                     ->action(function (Interviews $record, array $data) {
-                        $record->status = 'rescheduled';
-                        $record->notes = 'Eski Tarih: ' . $record->scheduled_date . "\n\n" . $record->notes;
+                        // Eski tarih bilgisini not olarak ekle
+                        $oldDate = $record->scheduled_date ? $record->scheduled_date->format('d.m.Y H:i') : 'Belirsiz';
+                        $notes = "Yeniden Planlama: Eski Tarih: {$oldDate}\n";
+                        $notes .= isset($data['notes']) ? $data['notes'] . "\n\n" : "\n";
+                        $notes .= $record->notes ?? '';
+                        
+                        // Mevcut kaydı güncelle
+                        $record->status = 'scheduled'; // Direkt olarak planlanmış durumuna çevir
                         $record->scheduled_date = $data['new_date'];
+                        $record->location = $data['location'] ?? $record->location;
+                        $record->is_online = $data['is_online'] ?? false;
                         
-                        if (isset($data['location'])) {
-                            $record->location = $data['location'];
-                        }
-                        
-                        if (isset($data['meeting_link'])) {
+                        // Online değilse meeting_link'i temizle, online ise güncelle
+                        if (!$data['is_online']) {
+                            $record->meeting_link = null;
+                        } else if (isset($data['meeting_link'])) {
                             $record->meeting_link = $data['meeting_link'];
                         }
                         
+                        $record->notes = $notes;
                         $record->save();
                         
-                        // Yeni bir mülakat oluştur
-                        $newInterview = $record->replicate();
-                        $newInterview->status = 'scheduled';
-                        $newInterview->scheduled_date = $data['new_date'];
-                        $newInterview->save();
+                        // Başvuru durumunu güncelle
+                        if ($record->application) {
+                            $record->application->status = 'mulakat_planlandi';
+                            $record->application->is_interview_scheduled = true;
+                            $record->application->save();
+                        }
+                        
+                        \Filament\Notifications\Notification::make()
+                            ->title('Mülakat Yeniden Planlandı')
+                            ->body('Mülakat tarihi ve bilgileri başarıyla güncellendi.')
+                            ->success()
+                            ->send();
                     })
                     ->visible(fn (Interviews $record): bool => in_array($record->status, ['scheduled', 'confirmed'])),
                 Tables\Actions\Action::make('schedule_interview')
@@ -391,12 +496,25 @@ class InterviewManagementResource extends Resource
                             ->maxLength(255),
                         Forms\Components\Toggle::make('is_online')
                             ->label('Online Mülakat mı?')
-                            ->default(false),
+                            ->default(false)
+                            ->live(),
                         Forms\Components\TextInput::make('meeting_link')
                             ->label('Toplantı Linki')
-                            ->url()
-                            ->maxLength(255)
-                            ->visible(fn (Forms\Get $get) => $get('is_online')),
+                            ->prefix('https://')
+                            ->placeholder('Örn: zoom.us/j/123456789')
+                            ->visible(fn (Forms\Get $get) => $get('is_online'))
+                            ->dehydrateStateUsing(function ($state) {
+                                if (empty($state)) {
+                                    return null;
+                                }
+                                
+                                // URL'e http veya https ön eki yoksa ekle
+                                if (!preg_match('~^(?:f|ht)tps?://~i', $state)) {
+                                    return 'https://' . $state;
+                                }
+                                
+                                return $state;
+                            }),
                         Forms\Components\Textarea::make('notes')
                             ->label('Notlar')
                             ->maxLength(65535),
@@ -564,12 +682,25 @@ class InterviewManagementResource extends Resource
                                 ->maxLength(255),
                             Forms\Components\Toggle::make('is_online')
                                 ->label('Online Mülakat mı?')
-                                ->default(false),
+                                ->default(false)
+                                ->live(),
                             Forms\Components\TextInput::make('meeting_link')
                                 ->label('Toplantı Linki')
-                                ->url()
-                                ->maxLength(255)
-                                ->visible(fn (Forms\Get $get) => $get('is_online')),
+                                ->prefix('https://')
+                                ->placeholder('Örn: zoom.us/j/123456789')
+                                ->visible(fn (Forms\Get $get) => $get('is_online'))
+                                ->dehydrateStateUsing(function ($state) {
+                                    if (empty($state)) {
+                                        return null;
+                                    }
+                                    
+                                    // URL'e http veya https ön eki yoksa ekle
+                                    if (!preg_match('~^(?:f|ht)tps?://~i', $state)) {
+                                        return 'https://' . $state;
+                                    }
+                                    
+                                    return $state;
+                                }),
                             Forms\Components\Textarea::make('notes')
                                 ->label('Notlar')
                                 ->maxLength(65535),
@@ -607,6 +738,7 @@ class InterviewManagementResource extends Resource
                         }),
                 ]),
             ])
+            ->label('Mülakat İşlemleri')
             ->defaultSort('scheduled_date', 'asc');
     }
 

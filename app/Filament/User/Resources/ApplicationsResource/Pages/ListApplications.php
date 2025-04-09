@@ -8,6 +8,8 @@ use Filament\Resources\Pages\ListRecords;
 use Filament\Resources\Pages\ListRecords\Tab;
 use Filament\Tables\Actions\Action;
 use Illuminate\Support\Facades\Auth;
+use Filament\Tables;
+use Filament\Notifications\Notification;
 
 class ListApplications extends ListRecords
 {
@@ -88,5 +90,9 @@ class ListApplications extends ListRecords
             
         ];
     }
+
+
+
+
 }
 

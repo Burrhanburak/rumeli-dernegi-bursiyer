@@ -5,6 +5,7 @@ namespace App\Filament\User\Resources\DocumentUploadResource\Pages;
 use App\Filament\User\Resources\DocumentUploadResource;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
+use Filament\Notifications\Notification;
 
 class EditDocumentUpload extends EditRecord
 {
@@ -26,4 +27,12 @@ class EditDocumentUpload extends EditRecord
     protected static ?string $breadcrumb = 'Evrak Düzenle';
 
     protected static ?string $breadcrumbParent = 'Kullanıcı';
+
+    protected function getSavedNotification(): ?Notification
+    {
+        return Notification::make()
+            ->success()
+            ->title('Evrak başarıyla güncellendi')
+            ->send();
+    }
 }

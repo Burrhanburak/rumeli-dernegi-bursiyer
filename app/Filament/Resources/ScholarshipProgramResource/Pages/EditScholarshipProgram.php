@@ -6,6 +6,7 @@ use App\Filament\Resources\ScholarshipProgramResource;
 use Filament\Actions;
 use Filament\Actions\Action;
 use Filament\Resources\Pages\EditRecord;
+use Filament\Notifications\Notification;
 
 class EditScholarshipProgram extends EditRecord
 {
@@ -40,7 +41,6 @@ class EditScholarshipProgram extends EditRecord
     {
         return parent::getSaveFormAction()
             ->label('Kaydet')
-            
             ->color('success');
     }
 
@@ -52,4 +52,13 @@ class EditScholarshipProgram extends EditRecord
             ->color('danger');
     }
 
+
+    protected function getSavedNotification(): ?Notification
+    {
+        return Notification::make()
+            ->title('Burs Programı Düzenlendi')
+            ->body('Burs programı başarıyla düzenlendi.')
+            ->success();
+    }
+    
 }

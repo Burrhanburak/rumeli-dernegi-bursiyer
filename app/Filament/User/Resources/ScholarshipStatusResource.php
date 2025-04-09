@@ -73,15 +73,20 @@ class ScholarshipStatusResource extends Resource
                         Forms\Components\DatePicker::make('end_date')
                             ->label('Bitiş Tarihi')
                             ->disabled(),
-                        Forms\Components\Select::make('status')
+                            Forms\Components\TextInput::make('status')
                             ->label('Durum')
-                            ->options([
-                                'active' => 'Aktif',
-                                'suspended' => 'Askıya Alındı',
-                                'completed' => 'Tamamlandı',
-                                'terminated' => 'Sonlandırıldı',
-                            ])
-                            ->disabled(),
+                            ->default('active')
+                            ->disabled()
+                            ->formatStateUsing(function ($state) {
+                                $statusLabels = [
+                                    'active' => 'Aktif',
+                                    'suspended' => 'Askıya Alındı',
+                                    'completed' => 'Tamamlandı',
+                                    'terminated' => 'Sonlandırıldı',
+                                ];
+                                
+                                return $statusLabels[$state] ?? $state;
+                            }),
                         Forms\Components\Textarea::make('status_reason')
                             ->label('Durum Nedeni')
                             ->disabled()
@@ -90,10 +95,16 @@ class ScholarshipStatusResource extends Resource
                 
                 Forms\Components\Section::make('Program Bilgileri')
                     ->schema([
-                        Forms\Components\Select::make('program_id')
-                            ->label('Program')
-                            ->relationship('program', 'name')
-                            ->disabled(),
+                        Forms\Components\TextInput::make('program_name')
+                        ->label('Program')
+                        ->disabled()
+                        ->formatStateUsing(function ($state, $record) {
+                            if ($record && $record->program) {
+                                return $record->program->name;
+                            }
+                            return ''; 
+                        })
+                        ->dehydrated(false), // Form gönderildiğinde bu alanı işleme alma
                         Forms\Components\TextInput::make('application_id')
                             ->label('Başvuru ID')
                             ->disabled(),

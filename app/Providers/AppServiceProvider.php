@@ -3,6 +3,8 @@
 namespace App\Providers;
 
 use App\Filament\Resources\ApplicationsResource;
+use App\Models\Applications;
+use App\Observers\ApplicationObserver;
 use Filament\Tables\Table;
 use Illuminate\Support\ServiceProvider;
 use Filament\Support\Facades\FilamentLabel;
@@ -11,7 +13,6 @@ use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
 use Illuminate\Auth\Events\Failed;
 use Illuminate\Support\Facades\Event;
-use Spatie\Activitylog\Models\Activity;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -35,6 +36,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Register observers
+        Applications::observe(ApplicationObserver::class);
+
         // Özel boş tablo başlığı ve açıklaması
         Table::configureUsing(function (Table $table): void {
             $table->emptyStateHeading('Başvuru Bulunamadı')

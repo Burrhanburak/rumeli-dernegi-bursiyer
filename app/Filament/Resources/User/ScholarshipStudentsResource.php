@@ -81,17 +81,21 @@ class ScholarshipStudentsResource extends Resource
                     ->schema([
                         Forms\Components\TextInput::make('name')
                             ->label('Burs Adı')
-                            ->disabled(),
+                            ->disabled(fn (string $operation): bool => $operation === 'view')
+                            ->required(),
                         Forms\Components\TextInput::make('amount')
                             ->label('Burs Miktarı (₺)')
                             ->numeric()
-                            ->disabled(),
+                            ->disabled(fn (string $operation): bool => $operation === 'view')
+                            ->required(),
                         Forms\Components\DatePicker::make('start_date')
                             ->label('Başlangıç Tarihi')
-                            ->disabled(),
+                            ->disabled(fn (string $operation): bool => $operation === 'view')
+                            ->required(),
                         Forms\Components\DatePicker::make('end_date')
                             ->label('Bitiş Tarihi')
-                            ->disabled(),
+                            ->disabled(fn (string $operation): bool => $operation === 'view')
+                            ->required(),
                         Forms\Components\Select::make('status')
                             ->label('Durum')
                             ->options([
@@ -100,10 +104,11 @@ class ScholarshipStudentsResource extends Resource
                                 'completed' => 'Tamamlandı',
                                 'terminated' => 'Sonlandırıldı',
                             ])
-                            ->disabled(),
+                            ->disabled(fn (string $operation): bool => $operation === 'view')
+                            ->required(),
                         Forms\Components\Textarea::make('notes')
                             ->label('Notlar')
-                            ->disabled()
+                            ->disabled(fn (string $operation): bool => $operation === 'view')
                             ->columnSpanFull(),
                     ])->columns(2),
             ]);
@@ -201,11 +206,19 @@ class ScholarshipStudentsResource extends Resource
             ->actions([
                 Tables\Actions\ViewAction::make()
                     ->label('Görüntüle'),
+                Tables\Actions\EditAction::make()
+                    ->label('Düzenle')
+                    ->icon('heroicon-o-pencil')
+                    ->color('primary'),
                 Tables\Actions\DeleteAction::make()
                     ->label('Sil')
                     ->icon('heroicon-o-trash')
                     ->color('danger')
                     ->requiresConfirmation()
+                    ->modalHeading('Öğrenciyi Sil')
+                    ->modalDescription('Bu işlem geri alınamaz. Öğrenciyi silmek istediğinize emin misiniz?')
+                    ->modalSubmitActionLabel('Evet, Sil')
+                    ->modalCancelActionLabel('İptal')
                     ->form([
                         Forms\Components\Textarea::make('reason')
                             ->label('Silme Sebebi')
@@ -219,6 +232,10 @@ class ScholarshipStudentsResource extends Resource
                     ->icon('heroicon-o-pause')
                     ->color('warning')
                     ->requiresConfirmation()
+                    ->modalHeading('Öğrencinin Bursunu Askıya Al')
+                    ->modalDescription('Öğrencinin bursunu askıya almak istediğinize emin misiniz?')
+                    ->modalSubmitActionLabel('Evet, Askıya Al')
+                    ->modalCancelActionLabel('İptal')
                     ->form([
                         Forms\Components\Textarea::make('reason')
                             ->label('Askıya Alma Sebebi')
@@ -236,7 +253,7 @@ class ScholarshipStudentsResource extends Resource
                             'notifiable_type' => 'App\Models\User',
                             'title' => 'Bursunuz Askıya Alındı',
                             'message' => 'Bursunuz askıya alındı. Sebep: ' . $data['reason'],
-                            'type' => 'b',
+                            'type' => 'scholarship_changed',
                             'application_id' => $record->application_id,
                             'is_read' => false,
                         ]);
@@ -253,6 +270,10 @@ class ScholarshipStudentsResource extends Resource
                     ->icon('heroicon-o-x-circle')
                     ->color('danger')
                     ->requiresConfirmation()
+                    ->modalHeading('Öğrencinin Bursunu Sonlandır')
+                    ->modalDescription('Öğrencinin bursunu sonlandırmak istediğinize emin misiniz?')
+                    ->modalSubmitActionLabel('Evet, Sonlandır')
+                    ->modalCancelActionLabel('İptal')
                     ->form([
                         Forms\Components\Textarea::make('reason')
                             ->label('Sonlandırma Sebebi')
@@ -270,7 +291,7 @@ class ScholarshipStudentsResource extends Resource
                             'notifiable_type' => 'App\Models\User',
                             'title' => 'Bursunuz Sonlandırıldı',
                             'message' => 'Bursunuz sonlandırıldı. Sebep: ' . $data['reason'],
-                            'type' => 'b',
+                            'type' => 'scholarship_changed',
                             'application_id' => $record->application_id,
                             'is_read' => false,
                         ]);
@@ -287,6 +308,10 @@ class ScholarshipStudentsResource extends Resource
                     ->icon('heroicon-o-play')
                     ->color('success')
                     ->requiresConfirmation()
+                    ->modalHeading('Öğrencinin Bursunu Aktifleştir')
+                    ->modalDescription('Öğrencinin bursunu aktifleştirmek istediğinize emin misiniz?')
+                    ->modalSubmitActionLabel('Evet, Aktifleştir')
+                    ->modalCancelActionLabel('İptal')
                     ->action(function (Scholarships $record) {
                         $record->status = 'active';
                         $record->status_reason = null;
@@ -299,7 +324,7 @@ class ScholarshipStudentsResource extends Resource
                             'notifiable_type' => 'App\Models\User',
                             'title' => 'Bursunuz Aktifleştirildi',
                             'message' => 'Bursunuz tekrar aktifleştirildi.',
-                            'type' => 'b',
+                            'type' => 'scholarship_changed',
                             'application_id' => $record->application_id,
                             'is_read' => false,
                         ]);
@@ -338,7 +363,7 @@ class ScholarshipStudentsResource extends Resource
                                         'notifiable_type' => 'App\Models\User',
                                         'title' => 'Bursunuz Askıya Alındı',
                                         'message' => 'Bursunuz askıya alındı. Sebep: ' . $data['reason'],
-                                        'type' => 'b',
+                                        'type' => 'scholarship_changed',
                                         'application_id' => $record->application_id,
                                         'is_read' => false,
                                     ]);
@@ -375,7 +400,7 @@ class ScholarshipStudentsResource extends Resource
                                         'notifiable_type' => 'App\Models\User',
                                         'title' => 'Bursunuz Sonlandırıldı',
                                         'message' => 'Bursunuz sonlandırıldı. Sebep: ' . $data['reason'],
-                                        'type' => 'b',
+                                        'type' => 'scholarship_changed',
                                         'application_id' => $record->application_id,
                                         'is_read' => false,
                                     ]);
@@ -407,7 +432,7 @@ class ScholarshipStudentsResource extends Resource
                                         'notifiable_type' => 'App\Models\User',
                                         'title' => 'Bursunuz Aktifleştirildi',
                                         'message' => 'Bursunuz tekrar aktifleştirildi.',
-                                        'type' => 'b',
+                                        'type' => 'scholarship_changed',
                                         'application_id' => $record->application_id,
                                         'is_read' => false,
                                     ]);
@@ -436,6 +461,7 @@ class ScholarshipStudentsResource extends Resource
         return [
             'index' => Pages\ListScholarshipStudents::route('/'),
             'view' => Pages\ViewScholarshipStudent::route('/{record}'),
+            'edit' => Pages\EditScholarshipStudent::route('/{record}/edit'),
         ];
     }
 } 

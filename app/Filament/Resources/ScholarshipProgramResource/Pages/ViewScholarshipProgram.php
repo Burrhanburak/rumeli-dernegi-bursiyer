@@ -5,7 +5,7 @@ namespace App\Filament\Resources\ScholarshipProgramResource\Pages;
 use App\Filament\Resources\ScholarshipProgramResource;
 use Filament\Actions;
 use Filament\Resources\Pages\ViewRecord;
-
+use Filament\Notifications\Notification;
 class ViewScholarshipProgram extends ViewRecord
 {
     protected static string $resource = ScholarshipProgramResource::class;

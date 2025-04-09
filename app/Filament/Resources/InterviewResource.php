@@ -43,12 +43,16 @@ class InterviewResource extends Resource
                         Forms\Components\Select::make('application_id')
                             ->relationship('application', 'id')
                             ->label('Başvuru')
+                            ->placeholder('Başvuru seçin')
                             ->required()
+                            ->preload()
                             ->searchable(),
                         Forms\Components\Select::make('interviewer_admin_id')
                             ->relationship('interviewer', 'name')
                             ->label('Mülakatçı')
+                            ->placeholder('Mülakatçı seçin')
                             ->required()
+                            ->preload()
                             ->searchable(),
                         Forms\Components\DateTimePicker::make('interview_date')
                             ->label('Planlanan Tarih')
@@ -61,9 +65,21 @@ class InterviewResource extends Resource
                             ->default(false),
                         Forms\Components\TextInput::make('meeting_link')
                             ->label('Toplantı Linki')
-                            ->url()
-                            ->maxLength(255)
-                            ->visible(fn (Forms\Get $get) => $get('is_online')),
+                            ->prefix('https://')
+                            ->placeholder('Örn: zoom.us/j/123456789')
+                            ->visible(fn (Forms\Get $get) => $get('is_online'))
+                            ->dehydrateStateUsing(function ($state) {
+                                if (empty($state)) {
+                                    return null;
+                                }
+                                
+                                // URL'e http veya https ön eki yoksa ekle
+                                if (!preg_match('~^(?:f|ht)tps?://~i', $state)) {
+                                    return 'https://' . $state;
+                                }
+                                
+                                return $state;
+                            }),
 
                         Forms\Components\Select::make('status')
                             ->label('Durum')

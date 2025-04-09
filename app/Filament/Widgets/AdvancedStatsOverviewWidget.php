@@ -8,7 +8,7 @@ use App\Models\Notifications;
 use App\Models\ScholarshipProgram;
 use App\Models\Scholarships;
 use App\Models\Applications;
-use App\Models\ActivityLogs;
+use App\Models\Documents;
 use App\Models\User;
 use EightyNine\FilamentAdvancedWidget\AdvancedStatsOverviewWidget as BaseWidget;
 use EightyNine\FilamentAdvancedWidget\AdvancedStatsOverviewWidget\Stat;

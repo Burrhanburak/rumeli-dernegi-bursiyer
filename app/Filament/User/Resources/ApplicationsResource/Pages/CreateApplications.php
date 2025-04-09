@@ -331,4 +331,11 @@ class CreateApplications extends CreateRecord
         return parent::getCancelFormAction()
             ->label('İptal');
     }
+
+    protected function getSavedNotification(): ?Notification
+    {
+        return Notification::make()
+            ->success()
+            ->title('Başvuru başarıyla oluşturuldu');
+    }
 }

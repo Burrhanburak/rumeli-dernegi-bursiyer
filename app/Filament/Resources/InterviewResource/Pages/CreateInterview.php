@@ -18,4 +18,10 @@ class CreateInterview extends CreateRecord
 
     protected static ?string $createButtonLabel = 'Yeni Mülakat';
 
+    protected function getCreateFormAction(): Actions\Action
+    {
+        return parent::getCreateFormAction()
+            ->label('Oluştur');
+    }
+
 }

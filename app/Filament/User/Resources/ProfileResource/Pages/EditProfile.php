@@ -39,4 +39,17 @@ class EditProfile extends EditRecord
         ->title('Profil başarıyla güncellendi')
         ->body('Profiliniz başarıyla güncellendi.');
   }
+
+  protected function getSaveFormAction(): Actions\Action
+  {
+      return parent::getSaveFormAction()
+          ->label('Kaydet');
+  }
+
+  protected function getCancelFormAction(): Actions\Action
+  {
+      return parent::getCancelFormAction()
+          ->label('İptal');
+  }
+
 }

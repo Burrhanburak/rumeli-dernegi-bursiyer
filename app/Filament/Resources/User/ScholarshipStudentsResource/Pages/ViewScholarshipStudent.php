@@ -125,4 +125,29 @@ class ViewScholarshipStudent extends ViewRecord
                 ->visible(fn () => $this->record->status === 'suspended'),
         ];
     }
+
+
+    protected function getSavedNotification(): ?Notification
+    {
+        return Notification::make()
+            ->success()
+            ->title('Burslu Öğrenci Düzenlendi')
+            ->body('Burslu öğrenci başarıyla düzenlendi.')
+            ->send();
+    }
+
+    protected function getViewFormAction(): Actions\Action
+    {
+        return parent::getViewFormAction()
+            ->label('Görüntüle');
+    }
+
+    protected function getCancelFormAction(): Actions\Action
+    {
+        return parent::getCancelFormAction()
+            ->label('İptal');
+    }
+
+    
+    
 } 

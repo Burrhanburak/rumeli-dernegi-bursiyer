@@ -52,17 +52,26 @@ class InterviewScheduleResource extends Resource
                     ->label('Toplantı Linki')
                     ->url(fn (Interviews $record): ?string => $record->meeting_link),
                 Forms\Components\Toggle::make('is_online')
-                    ->label('Online Mülakat'),
-                Forms\Components\Select::make('status')
+                    ->label('Online Mülakat')
+                    ->hidden(fn (Interviews $record): bool => $record->is_online),
+            
+                    Forms\Components\TextInput::make('status')
                     ->label('Durum')
-                    ->options([
-                        'scheduled' => 'Planlandı',
-                        'completed' => 'Tamamlandı',
-                        'canceled' => 'İptal Edildi',
-                        'rescheduled' => 'Yeniden Planlandı',
-                        'no_show' => 'Katılım Olmadı',
-                    ])
-                    ->required(),
+                    ->default('scheduled')
+                    ->disabled()
+                    ->formatStateUsing(function ($state) {
+                        $statusLabels = [
+                            'scheduled' => 'Planlandı',
+                            'completed' => 'Tamamlandı',
+                            'canceled' => 'İptal Edildi',
+                            'rescheduled' => 'Yeniden Planlandı',
+                            'no_show' => 'Katılım Olmadı',
+                            'confirmed' => 'Onaylandı',
+                        ];
+                        
+                        return $statusLabels[$state] ?? $state;
+                    }),
+
             ]);
     }
 
@@ -84,8 +93,9 @@ class InterviewScheduleResource extends Resource
                     ->searchable(),
                 Tables\Columns\TextColumn::make('meeting_link')
                     ->label('Toplantı Linki')
-                    ->url(fn (Interviews $record): ?string => $record->meeting_link)
-                    ->openUrlInNewTab()
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    // ->url(fn (Interviews $record): ?string => $record->meeting_link)
+                    // ->openUrlInNewTab()
                     ->searchable(),
                     
                 Tables\Columns\TextColumn::make('status')
@@ -97,6 +107,7 @@ class InterviewScheduleResource extends Resource
                         'canceled' => 'danger',
                         'rescheduled' => 'warning',
                         'no_show' => 'gray',
+                        'confirmed' => 'success',
                         default => 'secondary',
                     })
                     ->formatStateUsing(fn (string $state): string => match ($state) {
@@ -105,6 +116,7 @@ class InterviewScheduleResource extends Resource
                         'canceled' => 'İptal Edildi',
                         'rescheduled' => 'Yeniden Planlandı',
                         'no_show' => 'Katılım Olmadı',
+                        'confirmed' => 'Onaylandı',
                         default => $state,
                     })
                     ->sortable(),
@@ -121,6 +133,7 @@ class InterviewScheduleResource extends Resource
                         'canceled' => 'İptal Edildi',
                         'rescheduled' => 'Yeniden Planlandı',
                         'no_show' => 'Katılım Olmadı',
+                        'confirmed' => 'Onaylandı',
                     ]),
                 Tables\Filters\Filter::make('interview_date')
                     ->label('Tarih Aralığı')

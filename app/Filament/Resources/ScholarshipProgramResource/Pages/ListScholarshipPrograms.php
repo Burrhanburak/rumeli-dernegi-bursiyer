@@ -25,4 +25,5 @@ class ListScholarshipPrograms extends ListRecords
 
     protected static ?string $breadcrumbParent = 'Programlar';
     
+
 }

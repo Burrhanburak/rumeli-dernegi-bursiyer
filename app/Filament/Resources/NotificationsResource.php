@@ -180,9 +180,22 @@ class NotificationsResource extends Resource
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
+                    Tables\Actions\BulkAction::make('mark_all_read')
+                        ->label('Tümünü Okundu İşaretle')
+                        ->icon('heroicon-o-check')
+                        ->requiresConfirmation()
+                        ->deselectRecordsAfterCompletion()
+                        ->action(function (Collection $records) {
+                            $records->each(function ($record) {
+                                $record->is_read = true;
+                                $record->read_at = now();
+                                $record->save();
+                            });
+                        }),
                     Tables\Actions\DeleteBulkAction::make()
-                        ->label('Sil'),
-                ]),
+                        ->label('Tümünü Sil'),
+                ])
+                ->label('Bildirim İşlemleri'),
             ]);
     }
 

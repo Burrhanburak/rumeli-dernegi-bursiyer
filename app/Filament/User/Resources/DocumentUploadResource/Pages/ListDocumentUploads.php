@@ -10,7 +10,7 @@ use App\Models\ProgramDocumentRequirement;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\HtmlString;
 use Illuminate\Contracts\View\View;
-
+use Filament\Notifications\Notification;
 class ListDocumentUploads extends ListRecords
 {
     protected static string $resource = DocumentUploadResource::class;
@@ -21,13 +21,19 @@ class ListDocumentUploads extends ListRecords
             // Actions\CreateAction::make()
             //     ->label('Evrak Yükle')
             //     ->icon('heroicon-o-document-arrow-up')
-            //     ->color('success'),
+            //     ->color('success')
+            //     ->successNotification(
+            //         Notification::make()
+            //             ->title('Evrak başarıyla yüklendi')
+            //             ->body('Evrakınız başarıyla yüklendi.')
+            //             ->success()
+            //     ),
         ];
     }
     
     protected static ?string $title = 'Evrak Yükleme';
 
     protected static ?string $breadcrumb = 'Evrak Yükleme';
-    
-   
+  
+  
 }

@@ -17,7 +17,7 @@ use Ysfkaya\FilamentPhoneInput\Forms\PhoneInput;
 use Ysfkaya\FilamentPhoneInput\Tables\PhoneColumn;
 use Ysfkaya\FilamentPhoneInput\Infolists\PhoneEntry;
 use Ysfkaya\FilamentPhoneInput\PhoneInputNumberType;
-
+use Illuminate\Support\Facades\Auth;
 class UserResource extends Resource
 {
     protected static ?string $model = User::class;
@@ -32,81 +32,169 @@ class UserResource extends Resource
 
     protected static ?string $navigationBadgeTooltip = 'Aktif Kullanıcılar';
 
+    protected static ?string $title = 'Kullanıcılar';
+
+    protected static ?string $breadcrumb = 'Kullanıcılar';
+
+    protected static ?string $breadcrumbParent = 'Kullanıcı Yönetimi';
+
     public static function form(Form $form): Form
     {
         return $form
-            ->schema([
-                Forms\Components\Section::make('Kullanıcı Bilgileri')
-                    ->schema([
-                        Forms\Components\TextInput::make('ad')
-                            ->label('Ad')
-                            ->placeholder('Adınızı girin')
-                            ->required()
-                            ->maxLength(255),
-                        Forms\Components\TextInput::make('soyad')
-                            ->label('Soyad')
-                            ->placeholder('Soyadınızı girin')
-                            ->required()
-                            ->maxLength(255),
-                        Forms\Components\TextInput::make('email')
-                            ->label('E-posta')
-                            ->placeholder('E-posta adresinizi girin')
-                            ->email()
-                            ->required()
-                            ->maxLength(255)
-                            ->unique(ignoreRecord: true),
-                        Forms\Components\DateTimePicker::make('email_verified_at')
-                            ->label('E-posta Doğrulama Tarihi'),
-                        Forms\Components\TextInput::make('password')
-                            ->label('Şifre')
-                            ->password()
-                            ->placeholder('Şifre oluşturun')
-                            ->dehydrateStateUsing(fn (string $state): string => Hash::make($state))
-                            ->dehydrated(fn (?string $state): bool => filled($state))
-                            ->required(fn (string $operation): bool => $operation === 'create'),
-                        Forms\Components\Toggle::make('is_admin')
-                            ->label('Yönetici Yetkisi')
-                            ->helperText('Kullanıcıya yönetici yetkisi verir')
-                            ->onColor('success')
-                            ->offColor('danger'),
-                            PhoneInput::make('phone')
-                            ->defaultCountry('tr')
-                            ->initialCountry('tr')
-                            ->placeholder('Telefon numaranızı giriniz')
-                            ->locale('tr')
-                            ->countrySearch(false)
-                            ->label('Telefon Numarası')
-                            ->required()
-                            ->rules(['phone:TR'])
-                            ->validationMessages([
-                                'phone' => 'Lütfen geçerli bir telefon numarası girin.'
-                            ])
-                            ->unique(User::class, ignoreRecord: true),
-                        Forms\Components\TextInput::make('address')
-                            ->label('Adres')
-                            ->placeholder('Adresinizi girin')
-                            ->maxLength(255),
-                            Forms\Components\DatePicker::make('birth_date')
-                            ->native(false)
-                            ->displayFormat('d/m/Y')
-                            ->placeholder('Doğum Tarihiniz'),
-                        Forms\Components\FileUpload::make('image')
-                            ->label('Profil Fotoğrafı')
-                            ->image()
-                            ->imageEditor()
-                            ->circleCropper()
-                            ->directory('user-images')
-                            ->visibility('public')
-                            ->downloadable()
-                            ->placeholder('Profil resmi yükleyin veya sürükleyin')
-                            ->imagePreviewHeight('250')
-                            ->loadingIndicatorPosition('left')
-                            ->panelAspectRatio('2:1')
-                            ->imageResizeMode('cover')
-                            ->panelLayout('integrated')
-                            ->disk('public'),
-                    ])->columns(2),
-            ]);
+        ->schema([
+            Forms\Components\Section::make('Kullanıcı Bilgileri')
+            ->icon('heroicon-o-user')
+            ->collapsible()
+                ->description('Kişisel bilgilerinizi bu alandan düzenleyebilirsiniz.')
+                ->schema([
+                    // İlk satır - Ad ve Soyad
+                    Forms\Components\TextInput::make('name')
+                        ->label('Ad')
+                        ->placeholder('Adınızı girin')
+                        ->required()
+                        ->default(Auth::user()->name)
+                        ->maxLength(255),
+                    
+                    Forms\Components\TextInput::make('surname')
+                        ->label('Soyad')
+                        ->placeholder('Soyadınızı girin')
+                        ->required()
+                        ->default(Auth::user()->surname)
+                        ->maxLength(255),
+                    
+                    // İkinci satır - Kimlik ve Doğum Tarihi
+                    Forms\Components\TextInput::make('national_id')
+                        ->label('T.C. Kimlik No')
+                        ->placeholder('T.C. Kimlik Numaranız')
+                        ->required()
+                        ->numeric()
+                        ->disabled('edit')
+                        ->default(Auth::user()->national_id)
+                        ->length(11),
+                    
+                    Forms\Components\DatePicker::make('birth_date')
+                        ->label('Doğum Tarihi')
+                        ->native(false) 
+                        ->displayFormat('d/m/Y')
+                        ->placeholder('Doğum Tarihiniz')
+                        ->default(Auth::user()->birth_date),
+                    
+                    // Üçüncü satır - E-posta ve Doğrulama
+                    Forms\Components\TextInput::make('email')
+                        ->label('E-posta')
+                        ->placeholder('E-posta adresinizi girin')
+                        ->email()
+                        ->required()
+                        ->default(Auth::user()->email)
+                        ->maxLength(255)
+                        ->unique(ignoreRecord: true),
+                    
+                    Forms\Components\DateTimePicker::make('email_verified_at')
+                        ->label('E-posta Doğrulama Tarihi')
+                        ->disabled(),
+                    
+                    // Dördüncü satır - Telefon ve Profil Fotoğrafı
+                    PhoneInput::make('phone')
+                        ->defaultCountry('tr')
+                        ->initialCountry('tr')
+                        ->placeholder('Telefon numaranızı giriniz')
+                        ->locale('tr')
+                        ->countrySearch(false)
+                        ->label('Telefon Numarası')
+                        ->required()
+                        ->rules(['phone:TR'])
+                        ->validationMessages([
+                            'phone' => 'Lütfen geçerli bir telefon numarası girin.'
+                        ])
+                        ->unique(User::class, ignoreRecord: true),
+                    
+                    Forms\Components\FileUpload::make('image')
+                        ->label('Profil Fotoğrafı')
+                        ->image()
+                        ->directory('profile-photos')
+                        ->visibility('public')
+                        ->maxSize(1024) // 1MB
+                        ->placeholder('Profil fotoğrafınızı değiştiriniz')
+                        ->uploadingMessage('Yükleniyor...')
+                        ->circleCropper()
+                        ->openable()
+                        ->reorderable(false)
+                        ->avatar(),
+                    
+                    // Beşinci satır - Yönetici yetkisi
+                    Forms\Components\Toggle::make('is_admin')
+                        ->label('Yönetici Yetkisi')
+                        ->default(false)
+                        ->helperText('Kullanıcıya yönetici yetkisi verir')
+                        ->onColor('success')
+                        ->offColor('danger')
+                        ->columnSpanFull(),
+                        
+                ])
+                ->columns(2),
+            
+            // Adres bilgileri bölümü
+            Forms\Components\Section::make('Adres Bilgileri')
+                ->description('İletişim adresinizi bu alandan düzenleyebilirsiniz.')
+                ->icon('heroicon-o-map-pin')
+                ->collapsible()
+                ->schema([
+                    Forms\Components\Textarea::make('address')
+                        ->label('Adres')
+                        ->placeholder('Adresinizi giriniz')
+                        ->maxLength(255)
+                        ->columnSpanFull(),
+                    
+                    Forms\Components\TextInput::make('city')
+                        ->label('Şehir')
+                        ->placeholder('Şehirinizi giriniz')
+                        ->maxLength(100),
+                    
+                    Forms\Components\TextInput::make('postal_code')
+                        ->label('Posta Kodu')
+                        ->placeholder('Posta kodunuzu giriniz')
+                        ->maxLength(20),
+                ])
+                ->columns(2),
+            
+            // Şifre değiştirme bölümü
+            Forms\Components\Section::make('Şifre Değiştir')
+                ->description('Güçlü bir şifre kullanmanız önerilir.')
+                ->icon('heroicon-o-lock-closed')
+                ->collapsible()
+                ->collapsed() // Başlangıçta kapalı olması için
+                ->schema([
+                    Forms\Components\TextInput::make('current_password')
+                        ->label('Mevcut Şifre')
+                        ->placeholder('Mevcut şifrenizi giriniz')
+                        ->password()
+                        ->revealable()
+                        ->dehydrated(false)
+                        ->rule('current_password')
+                        ->columnSpanFull(),
+                    
+                    Forms\Components\TextInput::make('password')
+                        ->label('Yeni Şifre')
+                        ->placeholder('Yeni şifrenizi giriniz')
+                        ->password()
+                        ->revealable()
+                        ->dehydrateStateUsing(fn (string $state): string => Hash::make($state))
+                        ->dehydrated(fn (?string $state): bool => filled($state))
+                        ->rule('confirmed')
+                        ->minLength(8)
+                        ->maxLength(255)
+                        ->helperText('En az 8 karakter içeren güçlü bir şifre oluşturun.'),
+                    
+                    Forms\Components\TextInput::make('password_confirmation')
+                        ->label('Yeni Şifre Tekrar')
+                        ->placeholder('Yeni şifrenizi tekrar giriniz')
+                        ->password()
+                        ->revealable()
+                        ->dehydrated(false),
+                ])
+                ->columns(2),
+        ]);
+          
     }
 
     public static function table(Table $table): Table
@@ -186,6 +274,10 @@ class UserResource extends Resource
                     ->icon('heroicon-o-trash')
                     ->color('danger')
                     ->requiresConfirmation()
+                    ->modalHeading('Kullanıcı Sil')
+                    ->modalDescription('Bu kullanıcıyı silmek istediğinize emin misiniz?')
+                    ->modalCancelActionLabel('İptal')
+                    ->modalSubmitActionLabel('Sil')
                     ->form([
                         Forms\Components\Textarea::make('reason')
                             ->label('Silme Sebebi')
@@ -198,18 +290,20 @@ class UserResource extends Resource
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make()
-                        ->label('Sil'),
+                        ->label(' Tümünü Sil'),
                 ]),
+
+                ->label('Kullanıcı İşlemleri'),
             ]);
     }
 
     public static function getRelations(): array
     {
         return [
-            RelationManagers\ApplicationsRelationManager::make(),
+            // RelationManagers\ApplicationsRelationManager::make(),
             RelationManagers\DocumentsRelationManager::make(),
             RelationManagers\ScholarshipsRelationManager::make(),
-            RelationManagers\NotificationsRelationManager::make(),
+        
         ];
     }
 

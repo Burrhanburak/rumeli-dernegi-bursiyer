@@ -196,33 +196,29 @@ class ScholarshipApprovalResource extends Resource
                                     }
                                 }
                             }),
-                        Forms\Components\DatePicker::make('scholarship_start_date')
+                        Forms\Components\DateTimePicker::make('scholarship_start_date')
                             ->label('Burs Başlangıç Tarihi')
-                            ->default(now()->startOfMonth())
                             ->required()
-                            ->helperText('Varsayılan olarak bu ayın başlangıcı')
                             ->minDate(now())
-                            ->afterStateHydrated(function ($component, $state) {
-                                if (!$state) {
-                                    // Burs başlangıcını bu ayın 1'i olarak ayarla
-                                    $component->state(now()->startOfMonth()->format('Y-m-d'));
-                                }
-                            }),
-                        Forms\Components\DatePicker::make('scholarship_end_date')
+                            ->seconds(false)
+                            ->displayFormat('d/m/Y H:i')
+                           
+                            ->native(false),
+                        Forms\Components\DateTimePicker::make('scholarship_end_date')
                             ->label('Burs Bitiş Tarihi')
-                            ->default(now()->addYear()->endOfMonth())
+                            ->minDate(now())
+                            ->seconds(false)
+                            ->displayFormat('d/m/Y H:i')
+                            ->format('Y-m-d H:i')
+                            ->native(false)
                             ->required()
-                            ->helperText('Varsayılan olarak 1 yıl sonraki aynı ayın sonu')
                             ->minDate(function ($get) {
                                 $startDate = $get('scholarship_start_date');
                                 return $startDate ? Carbon::parse($startDate)->addMonths(1) : now()->addMonths(1);
                             })
-                            ->afterStateHydrated(function ($component, $state) {
-                                if (!$state) {
-                                    // Burs bitişini 1 yıl sonraki aynı ayın sonu olarak ayarla
-                                    $component->state(now()->addYear()->endOfMonth()->format('Y-m-d'));
-                                }
-                            }),
+                            ->validationMessages([
+                                'minDate' => 'Burs bitiş tarihi, başlangıç tarihinden sonra olmalıdır.',
+                            ]),
                         Forms\Components\Textarea::make('approval_notes')
                             ->label('Onay Notları')
                             ->maxLength(65535)
@@ -276,7 +272,7 @@ class ScholarshipApprovalResource extends Resource
                         'mulakat_havuzu' => 'primary',
                         'mulakat_planlandi' => 'primary',
                         'mulakat_tamamlandi' => 'success',
-                        'kabul_edildi' => 'success',
+                        'kabul_edildi', 'accepted' => 'success',
                         'reddedildi' => 'danger',
                         default => 'secondary',
                     })
@@ -288,7 +284,7 @@ class ScholarshipApprovalResource extends Resource
                         'mulakat_havuzu' => 'Mülakat Havuzu',
                         'mulakat_planlandi' => 'Mülakat Planlandı',
                         'mulakat_tamamlandi' => 'Mülakat Tamamlandı',
-                        'kabul_edildi' => 'Kabul Edildi',
+                        'kabul_edildi', 'accepted' => 'Kabul Edildi',
                         'reddedildi' => 'Reddedildi',
                         default => $state,
                     })
@@ -301,7 +297,7 @@ class ScholarshipApprovalResource extends Resource
                             ->where('status', 'completed')
                             ->first();
                         
-                        return $interview ? $interview->interview_score : null;
+                        return $interview ? $interview->score : null;
                     })
                     ->sortable(),
                 Tables\Columns\TextColumn::make('scholarship_amount')
@@ -389,12 +385,21 @@ class ScholarshipApprovalResource extends Resource
                                 '5000' => '5000 ₺',
                             ])
                             ->required(),
-                        Forms\Components\DatePicker::make('scholarship_start_date')
+                        Forms\Components\DateTimePicker::make('scholarship_start_date')
                             ->label('Burs Başlangıç Tarihi')
                             ->required()
-                            ->minDate(now()),
-                        Forms\Components\DatePicker::make('scholarship_end_date')
+                            ->minDate(now())
+                            ->seconds(false)
+                            ->displayFormat('d/m/Y H:i')
+                            ->format('Y-m-d H:i')
+                            ->native(false),
+                        Forms\Components\DateTimePicker::make('scholarship_end_date')
                             ->label('Burs Bitiş Tarihi')
+                            ->minDate(now())
+                            ->seconds(false)
+                            ->displayFormat('d/m/Y H:i')
+                            ->format('Y-m-d H:i')
+                            ->native(false)
                             ->required()
                             ->minDate(function ($get) {
                                 $startDate = $get('scholarship_start_date');
@@ -498,7 +503,12 @@ class ScholarshipApprovalResource extends Resource
                                 ->danger()
                                 ->send();
                         }
-                    }),
+                    })
+                    ->requiresConfirmation()
+                    ->modalHeading('Burs Onayı')
+                    ->modalDescription('Lütfen burs onayı için gerekli bilgileri giriniz.')
+                    ->modalSubmitActionLabel('Onayla')
+                    ->modalCancelActionLabel('İptal'),
                 Tables\Actions\Action::make('reject')
                     ->label('Reddet')
                     ->icon('heroicon-o-x-mark')
@@ -533,6 +543,7 @@ class ScholarshipApprovalResource extends Resource
                             ->success()
                             ->send();
                     })
+                    
                     ->requiresConfirmation()
                     ->modalHeading('Başvuru reddedilsin mi?')
                     ->modalDescription('Bu başvuruyu reddetmek istediğinizden emin misiniz? Bu işlem geri alınamaz.')
@@ -560,11 +571,11 @@ class ScholarshipApprovalResource extends Resource
                                     '5000' => '5000 ₺',
                                 ])
                                 ->required(),
-                            Forms\Components\DatePicker::make('scholarship_start_date')
+                            Forms\Components\DateTimePicker::make('scholarship_start_date')
                                 ->label('Burs Başlangıç Tarihi')
                                 ->required()
                                 ->minDate(now()),
-                            Forms\Components\DatePicker::make('scholarship_end_date')
+                            Forms\Components\DateTimePicker::make('scholarship_end_date')
                                 ->label('Burs Bitiş Tarihi')
                                 ->required()
                                 ->minDate(function ($get) {
@@ -704,8 +715,15 @@ class ScholarshipApprovalResource extends Resource
                         ->modalDescription('Seçilen başvuruları reddetmek istediğinizden emin misiniz? Bu işlem geri alınamaz.')
                         ->modalSubmitActionLabel('Evet, Reddet'),
                     Tables\Actions\DeleteBulkAction::make()
-                        ->label('Sil'),
-                ]),
+                        ->label('Tümünü Sil')
+                        ->color('danger')
+                        ->requiresConfirmation()
+                        ->modalHeading('Başvurular silinsin mi?')
+                        ->modalDescription('Seçilen başvuruları silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.')
+                        ->modalSubmitActionLabel('Evet, Sil'),
+                ])
+                 
+                ->label('Burs Onay İşlemleri'),
             ]);
     }
 

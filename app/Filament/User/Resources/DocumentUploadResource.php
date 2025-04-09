@@ -17,7 +17,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\HtmlString;
-
+use Filament\Notifications\Notification;
 class DocumentUploadResource extends Resource
 {
     protected static ?string $model = Documents::class;
@@ -293,11 +293,24 @@ class DocumentUploadResource extends Resource
                 })
                 ->modalSubmitAction(false)
                     ->modalCancelAction(false),
-                    
-                Tables\Actions\CreateAction::make()
+
+                    Tables\Actions\CreateAction::make()
                     ->label('Belge Yükle')
-                    ->icon('heroicon-o-document-plus'),
+                    ->icon('heroicon-o-document-plus')
+                    ->color('success')
+                    ->action(function ($record) {
+                        $record->create();
+                    })
+                    ->successNotification(
+                        Notification::make()
+                            ->title('Belge Yüklendi')
+                            ->body('Belge başarıyla yüklendi.')
+                            ->success()
+                    ),
+                   
             ])
+
+            
             ->columns([
                 Tables\Columns\ImageColumn::make('file_path')
                     ->label('Belge')
@@ -347,6 +360,9 @@ class DocumentUploadResource extends Resource
             ->actions([
                 Tables\Actions\ViewAction::make()
                     ->label('Görüntüle'),
+
+                    
+                 
                 // Tables\Actions\Action::make('download')
                 //     ->label('İndir')
                 //     ->icon('heroicon-o-arrow-down-tray')

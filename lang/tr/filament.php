@@ -91,7 +91,10 @@ return [
     'Delete' => 'Sil',
     'Edit' => 'Düzenle',
     'View' => 'Görüntüle',
-
-    
-    
+    'confirmation' => [
+        'title' => 'Onay',
+        'description' => 'Bu işlemi onaylamak istediğinizden emin misiniz?',
+        'confirm' => 'Evet',
+        'cancel' => 'İptal',
+    ],
 ]; 

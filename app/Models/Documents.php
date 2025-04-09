@@ -86,6 +86,34 @@ class Documents extends Model
                 }
             }
         });
+        
+        // Document created/updated/deleted sonrası application approval durumunu kontrol et
+        static::saved(function ($document) {
+            static::checkDocumentApprovalStatus($document);
+        });
+        
+        static::deleted(function ($document) {
+            static::checkDocumentApprovalStatus($document);
+        });
+    }
+    
+    /**
+     * Check document approval status and update the application's are_documents_approved flag
+     * 
+     * @param Documents $document
+     * @return void
+     */
+    protected static function checkDocumentApprovalStatus($document)
+    {
+        // Get the application
+        $application = $document->application;
+        if (!$application) {
+            return;
+        }
+        
+        // Let the application observer handle the document approval check
+        // This avoids duplicating logic and ensures consistency
+        $application->touch();
     }
     
     /**

@@ -88,11 +88,7 @@ class ScholarshipsRelationManager extends RelationManager
         return $table
             ->emptyStateHeading('Burs bulunamadı')
             ->emptyStateDescription('Bu programa ait burs bulunamadı. Yeni bir burs eklemek için "Yeni Burs" düğmesine tıklayın.')
-            ->emptyStateActions([
-                Tables\Actions\CreateAction::make()
-                    ->label('Yeni Burs')
-                    ->icon('heroicon-o-plus'),
-            ])
+           
             ->recordTitleAttribute('id')
             ->columns([
                 Tables\Columns\TextColumn::make('id')

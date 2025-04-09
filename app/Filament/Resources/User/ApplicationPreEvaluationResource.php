@@ -462,7 +462,9 @@ class ApplicationPreEvaluationResource extends Resource
                         ->modalSubmitActionLabel('Evet, Onayla'),
                     Tables\Actions\DeleteBulkAction::make()
                         ->label('Sil'),
-                ]),
+                ])
+
+                ->label('Başvuru İşlemleri'),
             ]);
     }
 

@@ -16,6 +16,13 @@ class CreateScholarshipProgram extends CreateRecord
 
     protected static ?string $breadcrumbParent = 'Programlar';
 
+
+    protected static ?string $createButtonLabel = 'Yeni Program';
+
+    protected static ?string $createButtonIcon = 'heroicon-o-plus';
+
+    protected static ?string $createButtonColor = 'success';
+
     protected function getCreateFormAction(): Actions\Action
     {
         return parent::getCreateFormAction()
@@ -32,6 +39,12 @@ class CreateScholarshipProgram extends CreateRecord
     {
         return parent::getCancelFormAction()
             ->label('İptal');
+    }
+
+    protected function getSaveFormAction(): Actions\Action
+    {
+        return parent::getSaveFormAction()
+            ->label('Kaydet');
     }
 
 }

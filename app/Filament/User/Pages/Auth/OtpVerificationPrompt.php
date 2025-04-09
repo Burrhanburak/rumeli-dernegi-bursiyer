@@ -61,12 +61,14 @@ class OtpVerificationPrompt extends EmailVerificationPrompt
 
     public function getHeading(): string | Htmlable
     {
-        return __('E-posta Adresinizi Doğrulayın');
+        // Comment out to avoid duplication with blade template
+        return '';
     }
 
     public function getSubheading(): string | Htmlable
     {
-        return __('Hesabınızı doğrulamak için lütfen e-posta adresinize gönderilen OTP kodunu girin.');
+        // Comment out to avoid duplication with blade template
+        return '';
     }
 
     public function getCachedSubNavigation(): array

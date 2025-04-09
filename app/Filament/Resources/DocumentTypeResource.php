@@ -57,13 +57,29 @@ class DocumentTypeResource extends Resource
                 //
             ])
             ->actions([
-                Tables\Actions\ViewAction::make(),
-                Tables\Actions\EditAction::make(),
+                Tables\Actions\ViewAction::make()
+                    ->label('Görüntüle')    ,
+                Tables\Actions\EditAction::make()
+                    ->label('Düzenle'),
+                Tables\Actions\DeleteAction::make()
+                    ->label('Sil')
+                    ->color('danger')
+                    ->requiresConfirmation()
+                    ->modalHeading('Belge Türünü Sil')
+                    ->modalDescription('Bu belge türünü silmek istediğinizden emin misiniz?')
+                    ->modalSubmitActionLabel('Evet, Sil')
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
+                    Tables\Actions\DeleteBulkAction::make()
+                    ->label('Sil')
+                    ->requiresConfirmation()
+                    ->modalHeading('Belge Türlerini Sil')
+                    ->modalDescription('Seçili belge türlerini silmek istediğinizden emin misiniz?')
+                    ->modalSubmitActionLabel('Evet, Sil')
+                ])
+
+                ->label('Belge Türü İşlemleri') 
             ]);
     }
 

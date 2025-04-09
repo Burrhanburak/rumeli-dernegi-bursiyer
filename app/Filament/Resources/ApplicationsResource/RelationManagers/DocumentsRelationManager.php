@@ -62,6 +62,7 @@ class DocumentsRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return $table
+        
         ->recordTitleAttribute('document_type_id')
             ->columns([
                 Tables\Columns\TextColumn::make('documentType.name')

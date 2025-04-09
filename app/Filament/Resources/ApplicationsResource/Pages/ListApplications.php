@@ -79,16 +79,7 @@ class ListApplications extends ListRecords
                 ->badgeColor('gray')
                 ,
           
-            
-            'Mülakat Havuzu' => Tab::make()
-                ->label('Mülakat Havuzu')
-                ->icon('heroicon-o-user-group')
-                ->modifyQueryUsing(fn ($query) => $query->where('status', 'interview_pool')
-                    ->orWhere('status', 'mulakat_havuzu'))
-                ->badge(ApplicationsResource::getModel()::where('status', 'interview_pool')
-                    ->orWhere('status', 'mulakat_havuzu')->count())
-                ->badgeColor('gray')
-                ,
+    
         ];
     }
 }

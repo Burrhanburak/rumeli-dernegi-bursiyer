@@ -225,6 +225,10 @@ class AcceptedApplicationsResource extends Resource
                         Forms\Components\DateTimePicker::make('scheduled_date')
                             ->label('Mülakat Tarihi ve Saati')
                             ->required()
+                            ->default(now()->addDays(1))
+                            ->minDate(now())
+                            ->native(false)
+                            ->seconds(false)
                             ->minDate(now()),
                         Forms\Components\Select::make('interviewer_id')
                             ->label('Mülakatçı')
@@ -242,12 +246,30 @@ class AcceptedApplicationsResource extends Resource
                             ->maxLength(255),
                         Forms\Components\Toggle::make('is_online')
                             ->label('Online Mülakat mı?')
-                            ->default(false),
+                            ->default(false)
+                            ->reactive()
+                            ->afterStateUpdated(function ($state, $set) {
+                                if (!$state) {
+                                    $set('meeting_link', null); // Link alanını temizle
+                                }
+                            }),
                         Forms\Components\TextInput::make('meeting_link')
                             ->label('Toplantı Linki')
-                            ->url()
-                            ->maxLength(255)
-                            ->visible(fn (Forms\Get $get) => $get('is_online')),
+                            ->prefix('https://')
+                            ->placeholder('Zoom veya Google Meet linki')
+                            ->visible(fn (callable $get) => $get('is_online'))
+                            ->dehydrateStateUsing(function ($state) {
+                                if (empty($state)) {
+                                    return null;
+                                }
+                                
+                                // URL'e http veya https ön eki yoksa ekle
+                                if (!preg_match('~^(?:f|ht)tps?://~i', $state)) {
+                                    return 'https://' . $state;
+                                }
+                                
+                                return $state;
+                            }),
                         Forms\Components\Textarea::make('notes')
                             ->label('Notlar')
                             ->maxLength(65535),
@@ -292,78 +314,78 @@ class AcceptedApplicationsResource extends Resource
                     ->modalHeading('Mülakat Planla')
                     ->modalDescription('Lütfen mülakat detaylarını girin')
                     ->modalSubmitActionLabel('Planla'),
-                Tables\Actions\Action::make('transfer_scholarship')
-                    ->label('Bursa Aktar')
-                    ->icon('heroicon-o-arrow-right-circle')
-                    ->color('success')
-                    ->visible(fn (Applications $record): bool => 
-                        $record->are_documents_approved && $record->is_interview_completed)
-                    ->form([
-                        Forms\Components\Select::make('scholarship_amount')
-                            ->label('Burs Miktarı (₺)')
-                            ->options([
-                                '500' => '500 ₺',
-                                '750' => '750 ₺',
-                                '1000' => '1000 ₺',
-                                '1500' => '1500 ₺',
-                                '2000' => '2000 ₺',
-                                '2500' => '2500 ₺',
-                                '3000' => '3000 ₺',
-                                '3500' => '3500 ₺',
-                                '4000' => '4000 ₺',
-                                '5000' => '5000 ₺',
-                            ])
-                            ->required(),
-                        Forms\Components\DatePicker::make('scholarship_start_date')
-                            ->label('Burs Başlangıç Tarihi')
-                            ->required()
-                            ->minDate(now()),
-                        Forms\Components\DatePicker::make('scholarship_end_date')
-                            ->label('Burs Bitiş Tarihi')
-                            ->required()
-                            ->minDate(function ($get) {
-                                $startDate = $get('scholarship_start_date');
-                                return $startDate ? \Illuminate\Support\Carbon::parse($startDate)->addMonths(1) : now()->addMonths(1);
-                            }),
-                        Forms\Components\Textarea::make('notes')
-                            ->label('Notlar')
-                            ->maxLength(65535),
-                    ])
-                    ->action(function (Applications $record, array $data) {
-                        // Başvuru durumunu güncelle
-                        $record->status = 'kabul_edildi';
-                        $record->approval_date = now();
-                        $record->approval_notes = $data['notes'] ?? null;
-                        $record->scholarship_amount = $data['scholarship_amount'];
-                        $record->scholarship_start_date = $data['scholarship_start_date'];
-                        $record->scholarship_end_date = $data['scholarship_end_date'];
-                        $record->save();
+            //     Tables\Actions\Action::make('transfer_scholarship')
+            //         ->label('Bursa Aktar')
+            //         ->icon('heroicon-o-arrow-right-circle')
+            //         ->color('success')
+            //         ->visible(fn (Applications $record): bool => 
+            //             $record->are_documents_approved && $record->is_interview_completed)
+            //         ->form([
+            //             Forms\Components\Select::make('scholarship_amount')
+            //                 ->label('Burs Miktarı (₺)')
+            //                 ->options([
+            //                     '500' => '500 ₺',
+            //                     '750' => '750 ₺',
+            //                     '1000' => '1000 ₺',
+            //                     '1500' => '1500 ₺',
+            //                     '2000' => '2000 ₺',
+            //                     '2500' => '2500 ₺',
+            //                     '3000' => '3000 ₺',
+            //                     '3500' => '3500 ₺',
+            //                     '4000' => '4000 ₺',
+            //                     '5000' => '5000 ₺',
+            //                 ])
+            //                 ->required(),
+            //             Forms\Components\DatePicker::make('scholarship_start_date')
+            //                 ->label('Burs Başlangıç Tarihi')
+            //                 ->required()
+            //                 ->minDate(now()),
+            //             Forms\Components\DatePicker::make('scholarship_end_date')
+            //                 ->label('Burs Bitiş Tarihi')
+            //                 ->required()
+            //                 ->minDate(function ($get) {
+            //                     $startDate = $get('scholarship_start_date');
+            //                     return $startDate ? \Illuminate\Support\Carbon::parse($startDate)->addMonths(1) : now()->addMonths(1);
+            //                 }),
+            //             Forms\Components\Textarea::make('notes')
+            //                 ->label('Notlar')
+            //                 ->maxLength(65535),
+            //         ])
+            //         ->action(function (Applications $record, array $data) {
+            //             // Başvuru durumunu güncelle
+            //             $record->status = 'kabul_edildi';
+            //             $record->approval_date = now();
+            //             $record->approval_notes = $data['notes'] ?? null;
+            //             $record->scholarship_amount = $data['scholarship_amount'];
+            //             $record->scholarship_start_date = $data['scholarship_start_date'];
+            //             $record->scholarship_end_date = $data['scholarship_end_date'];
+            //             $record->save();
                         
-                        // Burs kaydı oluştur
-                        \App\Models\Scholarships::create([
-                            'user_id' => $record->user_id,
-                            'program_id' => $record->program_id,
-                            'application_id' => $record->id,
-                            'approved_by' => auth()->id(),
-                            'name' => 'Standart Burs',
-                            'start_date' => \Carbon\Carbon::parse($data['scholarship_start_date'])->format('Y-m-d'),
-                            'end_date' => \Carbon\Carbon::parse($data['scholarship_end_date'])->format('Y-m-d'),
-                            'amount' => (float) $data['scholarship_amount'],
-                            'status' => 'active',
-                            'notes' => $data['notes'] ?? null,
-                        ]);
+            //             // Burs kaydı oluştur
+            //             \App\Models\Scholarships::create([
+            //                 'user_id' => $record->user_id,
+            //                 'program_id' => $record->program_id,
+            //                 'application_id' => $record->id,
+            //                 'approved_by' => auth()->id(),
+            //                 'name' => 'Standart Burs',
+            //                 'start_date' => \Carbon\Carbon::parse($data['scholarship_start_date'])->format('Y-m-d'),
+            //                 'end_date' => \Carbon\Carbon::parse($data['scholarship_end_date'])->format('Y-m-d'),
+            //                 'amount' => (float) $data['scholarship_amount'],
+            //                 'status' => 'active',
+            //                 'notes' => $data['notes'] ?? null,
+            //             ]);
                         
-                        // Bildirimi göster
-                        \Filament\Notifications\Notification::make()
-                            ->title('Burs Kaydı Oluşturuldu')
-                            ->body('Başvuru için burs kaydı başarıyla oluşturuldu.')
-                            ->success()
-                            ->send();
-                    })
-                    ->requiresConfirmation()
-                    ->modalHeading('Bursa Aktar')
-                    ->modalDescription('Bu başvuru için burs kaydı oluşturmak üzeresiniz.')
-                    ->button(),
+            //             // Bildirimi göster
+            //             \Filament\Notifications\Notification::make()
+            //                 ->title('Burs Kaydı Oluşturuldu')
+            //                 ->body('Başvuru için burs kaydı başarıyla oluşturuldu.')
+            //                 ->success()
+            //                 ->send();
+            //         })
+            //         ->requiresConfirmation()
+            //         ->modalHeading('Bursa Aktar')
+            //         ->modalDescription('Bu başvuru için burs kaydı oluşturmak üzeresiniz.')
+            //         ->button(),
             ]);
     }
     

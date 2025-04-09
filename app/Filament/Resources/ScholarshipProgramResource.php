@@ -13,6 +13,7 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Filament\Notifications\Notification;
 
 class ScholarshipProgramResource extends Resource
 {
@@ -105,7 +106,13 @@ class ScholarshipProgramResource extends Resource
             ->emptyStateActions([
                 Tables\Actions\CreateAction::make()
                     ->label('Burs Programı')
-                    ->icon('heroicon-o-academic-cap'),
+                    ->icon('heroicon-o-academic-cap')
+                    ->successNotification(
+                        Notification::make()
+                            ->title('Burs Programı Oluşturuldu')
+                            ->body('Burs programı başarıyla oluşturuldu.')
+                            ->success()
+                    ),
             ])
             ->columns([
                 Tables\Columns\TextColumn::make('name')
@@ -167,13 +174,53 @@ class ScholarshipProgramResource extends Resource
                 Tables\Actions\ViewAction::make()
                     ->label('Görüntüle'),
                 Tables\Actions\EditAction::make()
-                    ->label('Düzenle'),
+                    ->label('Düzenle')
+                    ->successNotification(
+                        Notification::make()
+                            ->title('Burs Programı Güncellendi')
+                            ->body('Burs programı başarıyla güncellendi.')
+                            ->success()
+                    ),
+                Tables\Actions\Action::make('manageDocuments')
+                    ->label('Evrak Türleri')
+                    ->color('warning')
+                    // ->modalHeading('Evrak Türleri')
+                    // ->modalDescription('Bu burs programı için gerekli olan evrak türlerini yönetin.')
+                    // ->modalCancelActionLabel('İptal')
+                    // ->modalSubmitActionLabel('Kaydet')
+                    ->icon('heroicon-o-document')
+                    ->url(fn (ScholarshipProgram $record): string => route('filament.admin.resources.scholarship-programs.edit', ['record' => $record, 'activeRelationManager' => 2])),
+                Tables\Actions\DeleteAction::make()
+                    ->label('Sil')
+                    ->color('danger')
+                    ->requiresConfirmation()
+                    ->modalHeading('Burs Programını Sil')
+                    ->modalDescription('Bu burs programını silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.')
+                    ->modalSubmitActionLabel('Evet, Sil')
+                    ->modalCancelActionLabel('İptal')
+                    ->successNotification(
+                        Notification::make()
+                            ->title('Burs Programı Silindi')
+                            ->body('Burs programı başarıyla silindi.')
+                            ->success()
+                    ),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make()
-                        ->label('Sil'),
-                ]),
+                    ->label('Tümünü Sil')
+                    ->requiresConfirmation()
+                    ->modalHeading('Belgeler silinsin mi?')
+                    ->modalDescription('Seçili belgeleri silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.')
+                    ->modalSubmitActionLabel('Evet, Sil')
+                    ->action(function ($records) {
+                        foreach ($records as $record) {
+                            // Delete the record
+                            $record->delete();
+                        }
+                    }),
+                ])
+                ->label('Program İşlemleri'),
             ]);
     }
 

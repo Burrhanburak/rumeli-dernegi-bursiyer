@@ -50,6 +50,9 @@ class ProfileResource extends Resource
         return $form
             ->schema([
                 Forms\Components\Section::make('Kişisel Bilgiler')
+                ->description('Kişisel bilgilerinizi bu alandan düzenleyebilirsiniz.')
+                ->icon('heroicon-o-user')
+                ->collapsible()
                     ->schema([
                         Forms\Components\TextInput::make('name')
                             ->label('Adı')
@@ -88,6 +91,14 @@ class ProfileResource extends Resource
                             ->native(false)
                             ->displayFormat('d/m/Y')
                             ->placeholder('Doğum Tarihiniz'),
+
+                            Forms\Components\TextInput::make('national_id')
+                            ->label('T.C. Kimlik No')
+                            ->placeholder('T.C. Kimlik Numaranız')
+                            ->required()
+                            ->numeric()
+                            ->disabled('edit')
+                            ->length(11),
                         Forms\Components\FileUpload::make('image')
                             ->label('Profil Fotoğrafı')
                             ->image()
@@ -103,17 +114,14 @@ class ProfileResource extends Resource
                             ->reorderable(false)
                             ->avatar(),
                             
-                            Forms\Components\TextInput::make('national_id')
-                            ->label('T.C. Kimlik No')
-                            ->placeholder('T.C. Kimlik Numaranız')
-                            ->required()
-                            ->numeric()
-                            ->disabled('edit')
-                            ->length(11),
+                       
                       
                     ])->columns(2),
                 
                 Forms\Components\Section::make('Adres Bilgileri')
+                ->description('İletişim adresinizi bu alandan düzenleyebilirsiniz.')
+                ->icon('heroicon-o-map-pin')
+                ->collapsible()
                     ->schema([
                         Forms\Components\Textarea::make('address')
                             ->label('Adres')
@@ -130,18 +138,24 @@ class ProfileResource extends Resource
                             ->maxLength(20),
                     ])->columns(2),
                 
-                Forms\Components\Section::make('Şifre Değiştir')
+                Forms\Components\Section::make('Şifre Değiştir')    
+                ->description('Güçlü bir şifre kullanmanız önerilir.')
+                ->icon('heroicon-o-lock-closed')
+                ->collapsible()
+                ->collapsed() // Başlangıçta kapalı olması için
                     ->schema([
                         Forms\Components\TextInput::make('current_password')
                             ->label('Mevcut Şifre')
                             ->placeholder('Mevcut şifrenizi giriniz')
                             ->password()
+                            ->revealable()
                             ->dehydrated(false)
                             ->rule('current_password'),
                         Forms\Components\TextInput::make('password')
                             ->label('Yeni Şifre')
                             ->placeholder('Yeni şifrenizi giriniz')
                             ->password()
+                            ->revealable()
                             ->dehydrateStateUsing(fn (string $state): string => Hash::make($state))
                             ->dehydrated(fn (?string $state): bool => filled($state))
                             ->rule('confirmed'),
@@ -149,6 +163,7 @@ class ProfileResource extends Resource
                             ->label('Yeni Şifre Tekrar')
                             ->placeholder('Yeni şifrenizi tekrar giriniz')
                             ->password()
+                            ->revealable()
                             ->dehydrated(false),
                     ])->columns(2),
             ]);

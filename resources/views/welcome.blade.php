@@ -181,9 +181,15 @@
                         <div class="flex items-center gap-4">
                             <div class="flex gap-2">
                                 @auth
-                                    <a href="{{ url('user/dashboard') }}" class="btn btn-outline">
-                                        Dashboard
-                                    </a>
+                                    @if(auth()->user()->is_admin)
+                                        <a href="{{ url('admin/dashboard') }}" class="btn btn-outline">
+                                            Admin Dashboard
+                                        </a>
+                                    @else
+                                        <a href="{{ url('user/user-dashboard') }}" class="btn btn-outline">
+                                            Dashboard
+                                        </a>
+                                    @endif
                                 @else
                                 <a href="{{ url('user/login') }}" class="btn btn-outline px-5 py-5 text-sm sm:text-base">
                                 Giriş Yap
@@ -211,9 +217,16 @@
                             </p>
                             <div class="mt-10 flex items-center gap-x-6">
                                 @auth
-                                    <a href="{{ url('user/dashboard') }}" class="btn btn-primary px-5 py-3">
-                                        Dashboard'a Git
-                                    </a>
+                                @if(auth()->user()->is_admin)
+                                        <a href="{{ url('admin/dashboard') }}" class="btn btn-outline">
+                                            Admin Dashboard
+                                        </a>
+                                    @else
+                                            <a href="{{ url('user/user-dashboard') }}" class="btn btn-outline">
+                                            Dashboard
+                                        </a>
+                                    @endif
+                                
                                 @else
                                     <a href="{{ url('user/register') }}" class="btn btn-primary px-5 py-3">
                                         Şimdi Başvur

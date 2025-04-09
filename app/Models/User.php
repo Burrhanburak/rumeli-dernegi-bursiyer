@@ -13,13 +13,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Filament\Models\Contracts\HasAvatar;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
-use Spatie\Activitylog\Traits\LogsActivity;
-use Spatie\Activitylog\LogOptions;
+use Laravel\Sanctum\HasApiTokens;
+use Illuminate\Support\Arr;
 
 class User extends Authenticatable implements FilamentUser, HasAvatar, MustVerifyEmail
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable;
+    use HasFactory, Notifiable, HasApiTokens;
 
     // public function getActivitylogOptions(): LogOptions
     // {
@@ -250,14 +250,6 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, MustVerif
     }
 
     /**
-     * Get the activity logs for the user.
-     */
-    public function activityLogs(): HasMany
-    {
-        return $this->hasMany(ActivityLogs::class, 'user_id');
-    }
-
-    /**
      * Get the applications reviewed by this admin user.
      */
     public function reviewedApplications(): HasMany
@@ -318,7 +310,7 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, MustVerif
     public function canAccessPanel(Panel $panel): bool
     {
         if ($panel->getId() === 'admin') {
-            return str_ends_with($this->email, 'burhanburakozcaan@gmail.com') && $this->hasVerifiedEmail();
+            return $this->is_admin && $this->hasVerifiedEmail();
         }
     
         return true;

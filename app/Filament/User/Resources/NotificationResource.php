@@ -113,13 +113,7 @@ class NotificationResource extends Resource
                     ->sortable(),
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make('is_read')
-                    ->label('Okunma Durumu')
-                    ->options([
-                        true => 'Okundu',
-                        false => 'Okunmadı',
-                    ])
-                    ->default(true),
+              
                 Tables\Filters\SelectFilter::make('type')
                     ->label('Tür')
                     ->options([
@@ -215,7 +209,8 @@ class NotificationResource extends Resource
                                 ->success()
                                 ->send();
                         }),
-                ]),
+                ])
+                ->label('Bildirim İşlemleri')
             ])
             ->defaultSort('created_at', 'desc');
     }
