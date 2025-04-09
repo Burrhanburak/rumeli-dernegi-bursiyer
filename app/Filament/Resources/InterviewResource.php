@@ -217,7 +217,7 @@ class InterviewResource extends Resource
                         'pending' => 'warning',
                         default => 'gray',
                     })
-                    ->formatStateUsing(fn (string $state = null): string => match ($state ?? '') {
+                    ->formatStateUsing(fn (?string $state): string => match ($state ?? '') {
                         'passed' => 'Başarılı',
                         'failed' => 'Başarısız',
                         'pending' => 'Beklemede',
