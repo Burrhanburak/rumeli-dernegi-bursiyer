@@ -85,6 +85,20 @@ class ScholarshipProgramResource extends Resource
                         Forms\Components\Toggle::make('is_active')
                             ->label('Aktif mi')
                             ->required(),
+                        Forms\Components\Select::make('status')
+                            ->label('Program Durumu')
+                            ->options([
+                                'aktif' => 'Aktif',
+                                'askida' => 'Askıda',
+                                'sonlandirildi' => 'Sonlandırıldı',
+                            ])
+                            ->default('aktif')
+                            ->required(),
+                        Forms\Components\Textarea::make('status_reason')
+                            ->label('Durum Değişiklik Sebebi')
+                            ->nullable()
+                            ->columnSpanFull()
+                            ->visible(fn (callable $get) => $get('status') !== 'aktif'),
                     ])->columns(2),
                     
                 Forms\Components\Section::make('Kontenjan Bilgisi')
@@ -129,9 +143,26 @@ class ScholarshipProgramResource extends Resource
                 Tables\Columns\IconColumn::make('is_active')
                     ->label('Durum')
                     ->boolean(),
+                Tables\Columns\TextColumn::make('status')
+                    ->label('Program Durumu')
+                    ->badge()
+                    ->tooltip(fn ($state): string => "Raw value: " . ($state ?? 'null'))
+                    ->color(fn ($state): string => match ($state) {
+                        'active', 'aktif', '1', 1, true, null, '' => 'success',
+                        'suspended', 'askıya_alındı', 'askida' => 'warning',
+                        'terminated', 'sonlandırıldı', 'sonlandirildi' => 'danger',
+                        default => 'gray',
+                    })
+                    ->formatStateUsing(fn ($state): string => match ($state) {
+                        'active', 'aktif', '1', 1, true, null, '' => 'Aktif',
+                        'suspended', 'askıya_alındı', 'askida' => 'Askıda',
+                        'terminated', 'sonlandırıldı', 'sonlandirildi' => 'Sonlandırıldı',
+                        default => 'Belirsiz',
+                    }),
                 Tables\Columns\TextColumn::make('application_start_date')
                     ->label('Başvuru Başlangıcı')
                     ->date()
+                    
                     ->sortable(),
                 Tables\Columns\TextColumn::make('application_end_date')
                     ->label('Başvuru Bitişi')
@@ -169,6 +200,13 @@ class ScholarshipProgramResource extends Resource
                     ->label('Başvuruya Açık')
                     ->query(fn (Builder $query): Builder => $query->where('application_end_date', '>=', now()))
                     ->toggle(),
+                Tables\Filters\SelectFilter::make('status')
+                    ->label('Program Durumu')
+                    ->options([
+                        'aktif' => 'Aktif',
+                        'askida' => 'Askıda',
+                        'sonlandirildi' => 'Sonlandırıldı',
+                    ]),
             ])
             ->actions([
                 Tables\Actions\ViewAction::make()
@@ -181,6 +219,91 @@ class ScholarshipProgramResource extends Resource
                             ->body('Burs programı başarıyla güncellendi.')
                             ->success()
                     ),
+                Tables\Actions\Action::make('suspend')
+                    ->label('Askıya Al')
+                    ->icon('heroicon-o-pause')
+                    ->color('warning')
+                    ->requiresConfirmation()
+                    ->modalHeading('Programı Askıya Al')
+                    ->modalDescription('Bu burs programını askıya almak istediğinize emin misiniz?')
+                    ->modalSubmitActionLabel('Evet, Askıya Al')
+                    ->modalCancelActionLabel('İptal')
+                    ->visible(function (ScholarshipProgram $record) {
+                        // Don't show if already suspended or terminated
+                        return !in_array($record->status, ['askida', 'sonlandirildi']);
+                    })
+                    ->form([
+                        Forms\Components\Textarea::make('reason')
+                            ->label('Askıya Alma Sebebi')
+                            ->required(),
+                    ])
+                    ->action(function (ScholarshipProgram $record, array $data) {
+                        $record->status = 'askida';
+                        $record->status_reason = $data['reason'];
+                        $record->last_updated_by = auth()->id();
+                        $record->save();
+                        
+                        Notification::make()
+                            ->title('Program Askıya Alındı')
+                            ->body('Burs programı başarıyla askıya alındı.')
+                            ->success()
+                            ->send();
+                    }),
+                Tables\Actions\Action::make('terminate')
+                    ->label('Sonlandır')
+                    ->icon('heroicon-o-x-circle')
+                    ->color('danger')
+                    ->requiresConfirmation()
+                    ->modalHeading('Programı Sonlandır')
+                    ->modalDescription('Bu burs programını sonlandırmak istediğinize emin misiniz?')
+                    ->modalSubmitActionLabel('Evet, Sonlandır')
+                    ->modalCancelActionLabel('İptal')
+                    ->visible(function (ScholarshipProgram $record) {
+                        // Don't show if already suspended or terminated
+                        return !in_array($record->status, ['askida', 'sonlandirildi']);
+                    })
+                    ->form([
+                        Forms\Components\Textarea::make('reason')
+                            ->label('Sonlandırma Sebebi')
+                            ->required(),
+                    ])
+                    ->action(function (ScholarshipProgram $record, array $data) {
+                        $record->status = 'sonlandirildi';
+                        $record->status_reason = $data['reason'];
+                        $record->last_updated_by = auth()->id();
+                        $record->save();
+                        
+                        Notification::make()
+                            ->title('Program Sonlandırıldı')
+                            ->body('Burs programı başarıyla sonlandırıldı.')
+                            ->success()
+                            ->send();
+                    }),
+                Tables\Actions\Action::make('activate')
+                    ->label('Aktifleştir')
+                    ->icon('heroicon-o-play')
+                    ->color('success')
+                    ->requiresConfirmation()
+                    ->modalHeading('Programı Aktifleştir')
+                    ->modalDescription('Bu burs programını aktifleştirmek istediğinize emin misiniz?')
+                    ->modalSubmitActionLabel('Evet, Aktifleştir')
+                    ->modalCancelActionLabel('İptal')
+                    ->visible(function (ScholarshipProgram $record) {
+                        // Only show if suspended or terminated
+                        return in_array($record->status, ['askida', 'sonlandirildi']);
+                    })
+                    ->action(function (ScholarshipProgram $record) {
+                        $record->status = 'aktif';
+                        $record->status_reason = null;
+                        $record->last_updated_by = auth()->id();
+                        $record->save();
+                        
+                        Notification::make()
+                            ->title('Program Aktifleştirildi')
+                            ->body('Burs programı başarıyla aktifleştirildi.')
+                            ->success()
+                            ->send();
+                    }),
                 Tables\Actions\Action::make('manageDocuments')
                     ->label('Evrak Türleri')
                     ->color('warning')

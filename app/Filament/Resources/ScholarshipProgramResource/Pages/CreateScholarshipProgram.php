@@ -47,4 +47,11 @@ class CreateScholarshipProgram extends CreateRecord
             ->label('Kaydet');
     }
 
+    protected function getSavedNotification(): ?Notification
+    {
+        return Notification::make()
+            ->title('Program Oluşturuldu')
+            ->body('Program başarıyla oluşturuldu.')
+            ->success();
+    }
 }

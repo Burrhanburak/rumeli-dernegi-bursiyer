@@ -6,6 +6,7 @@ use App\Filament\Resources\ApplicationsResource;
 use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Resources\Pages\ListRecords\Tab;
+use App\Filament\Exports\ApplicationsExporter;
 
 class ListApplications extends ListRecords
 {
@@ -16,6 +17,9 @@ class ListApplications extends ListRecords
         return [
             Actions\CreateAction::make()
                 ->label('Yeni Başvuru'),
+
+      
+              
         ];
     }
 

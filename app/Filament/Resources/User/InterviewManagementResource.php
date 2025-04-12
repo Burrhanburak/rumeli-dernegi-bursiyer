@@ -130,6 +130,17 @@ class InterviewManagementResource extends Resource
                             ->numeric()
                             ->minValue(0)
                             ->maxValue(100),
+                        Forms\Components\Select::make('interview_result')
+                            ->label('Mülakat Sonucu')
+                            ->options([
+                                'passed' => 'Başarılı',
+                                'failed' => 'Başarısız',
+                                'pending' => 'Değerlendirmede',
+                            ])
+                            ->placeholder(false)
+                            ->selectablePlaceholder(false)
+                            ->required()
+                            ->default('pending'),
                     ])->columns(2),
             ]);
     }
@@ -164,9 +175,13 @@ class InterviewManagementResource extends Resource
                 Tables\Columns\TextColumn::make('status')
                     ->label('Durum')
                     ->badge()
-                    ->color(fn (string $state): string => match ($state) {
+                    ->color(fn (Interviews $record): string => match ($record->status) {
                         'scheduled' => 'info',
-                        'completed' => 'success',
+                        'completed' => match ($record->interview_result) {
+                            'pending' => 'warning',
+                            'failed' => 'danger',
+                            default => 'success'
+                        },
                         'canceled' => 'danger',
                         'rescheduled' => 'warning',
                         'no_show' => 'gray',
@@ -174,15 +189,19 @@ class InterviewManagementResource extends Resource
                         'awaiting_schedule' => 'secondary',
                         default => 'secondary',
                     })
-                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                    ->formatStateUsing(fn (Interviews $record): string => match ($record->status) {
                         'scheduled' => 'Planlandı',
-                        'completed' => 'Tamamlandı',
+                        'completed' => match ($record->interview_result) {
+                            'pending' => 'Değerlendirmede',
+                            'failed' => 'Başarısız',
+                            default => 'Tamamlandı'
+                        },
                         'canceled' => 'İptal Edildi',
                         'rescheduled' => 'Yeniden Planlandı',
                         'no_show' => 'Katılım Olmadı',
                         'confirmed' => 'Katılım Onaylandı',
                         'awaiting_schedule' => 'Planlama Bekliyor',
-                        default => $state,
+                        default => $record->status,
                     })
                     ->sortable(),
                 Tables\Columns\TextColumn::make('location')
@@ -289,6 +308,8 @@ class InterviewManagementResource extends Resource
                                 'failed' => 'Başarısız',
                                 'pending' => 'Değerlendirmede',
                             ])
+                            ->placeholder(false)
+                            ->selectablePlaceholder(false)
                             ->required()
                             ->default('pending'),
                     ])
@@ -312,14 +333,15 @@ class InterviewManagementResource extends Resource
                             if ($data['interview_result'] === 'passed') {
                                 $record->application->status = 'mulakat_tamamlandi';
                                 $record->application->interview_result = 'passed';
-                            } else if ($data['interview_result'] === 'failed') {
+                            } elseif ($data['interview_result'] === 'failed') {
                                 $record->application->status = 'red_edildi';
                                 $record->application->interview_result = 'failed';
                                 $record->application->rejection_reason = 'Mülakat başarısız: ' . $data['feedback'];
                                 $record->application->rejected_by = auth()->id();
                                 $record->application->rejected_at = now();
                             } else {
-                                $record->application->status = 'mulakat_tamamlandi';
+                                // Değerlendirmede (pending) durumu
+                                $record->application->status = 'degerlendirmede';
                                 $record->application->interview_result = 'pending';
                             }
                             
@@ -348,21 +370,22 @@ class InterviewManagementResource extends Resource
                         }
                     })
                     ->visible(fn (Interviews $record): bool => 
-                    $record->status === 'completed' && 
-                    $record->application &&  
-                    $record->application->status !== 'accepted' && 
-                    $record->application->status !== 'final_acceptance' && 
-                    $record->application->status !== 'mulakat_havuzu' && 
-                    $record->application->status !== 'mulakat_planlandi' && 
-                    // $record->application->status !== 'mulakat_tamamlandi' && 
-                    $record->application->status !== 'dogrulama_tamamlandı' && 
-                    $record->application->status !== 'dogrulama_tamamlandi' && 
-                    $record->application->status !== 'Mülakat Planlandı' && 
-                    $record->application->status !== 'interview_completed' && 
-                    $record->application->status !== 'interview_scheduled' && 
-                    $record->application->status !== 'rejected' && 
-                    $record->application->status !== 'interview_pool'
-                ),
+                        $record->status === 'completed' && 
+                        $record->interview_result === 'passed' &&
+                        $record->application && 
+                        $record->application->status !== 'accepted' && 
+                        $record->application->status !== 'final_acceptance' && 
+                        $record->application->status !== 'mulakat_havuzu' && 
+                        $record->application->status !== 'mulakat_planlandi' && 
+                        // $record->application->status !== 'mulakat_tamamlandi' && 
+                        $record->application->status !== 'dogrulama_tamamlandı' && 
+                        $record->application->status !== 'dogrulama_tamamlandi' && 
+                        $record->application->status !== 'Mülakat Planlandı' && 
+                        $record->application->status !== 'interview_completed' && 
+                        $record->application->status !== 'interview_scheduled' && 
+                        $record->application->status !== 'rejected' && 
+                        $record->application->status !== 'interview_pool'
+                    ),
                 Tables\Actions\Action::make('cancel')
                     ->label('İptal Et')
                     ->icon('heroicon-o-x-mark')
@@ -568,6 +591,8 @@ class InterviewManagementResource extends Resource
                                     'failed' => 'Başarısız',
                                     'pending' => 'Değerlendirmede',
                                 ])
+                                ->placeholder(false)
+                                ->selectablePlaceholder(false)
                                 ->required()
                                 ->default('pending'),
                             Forms\Components\Textarea::make('feedback')
@@ -592,14 +617,14 @@ class InterviewManagementResource extends Resource
                                         if ($data['interview_result'] === 'passed') {
                                             $record->application->status = 'mulakat_tamamlandi';
                                             $record->application->interview_result = 'passed';
-                                        } else if ($data['interview_result'] === 'failed') {
+                                        } elseif ($data['interview_result'] === 'failed') {
                                             $record->application->status = 'red_edildi';
                                             $record->application->interview_result = 'failed';
                                             $record->application->rejection_reason = 'Mülakat başarısız: ' . $data['feedback'];
                                             $record->application->rejected_by = auth()->id();
                                             $record->application->rejected_at = now();
                                         } else {
-                                            $record->application->status = 'mulakat_tamamlandi';
+                                            $record->application->status = 'degerlendirmede';
                                             $record->application->interview_result = 'pending';
                                         }
                                         
@@ -630,6 +655,7 @@ class InterviewManagementResource extends Resource
                             
                             foreach ($records as $record) {
                                 if ($record->status === 'completed' && 
+                                    $record->interview_result === 'passed' &&
                                     $record->application) {
                                     
                                     $record->application->status = 'accepted';

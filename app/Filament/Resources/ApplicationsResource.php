@@ -24,7 +24,10 @@ use Ysfkaya\FilamentPhoneInput\Infolists\PhoneEntry;
 use Ysfkaya\FilamentPhoneInput\PhoneInputNumberType;
 use Filament\Notifications\Notification;
 use App\Models\ScholarshipProgram;
-
+use Filament\Tables\Actions\ExportAction;
+use Filament\Actions\Exports\Enums\ExportFormat;
+use App\Filament\Exports\ApplicationsExporter;
+use Filament\Tables\Actions\Action;
 class ApplicationsResource extends Resource
 {
     protected static ?string $model = Applications::class;
@@ -142,7 +145,7 @@ Forms\Components\Grid::make()
             ->options([
                 'Male' => 'Erkek',
                 'Female' => 'Kadın',
-                'Other' => 'Diğer'
+                // 'Other' => 'Diğer'
             ]),
     ])->columns(4),
     
@@ -943,6 +946,7 @@ Forms\Components\Grid::make()
     {
         return $table
             ->emptyStateHeading('Başvuru bulunamadı')
+            // ->emptyStateIcon('heroicon-o-document-text')
             ->emptyStateDescription('Yeni bir başvuru eklemek için "Yeni Başvuru" düğmesine tıklayın.')
             ->emptyStateActions([
                 Tables\Actions\CreateAction::make()
@@ -1948,6 +1952,23 @@ Forms\Components\Grid::make()
                 ])
 
                 ->label('Başvuru İşlemleri'),
+
+           
+            
+            ])
+            ->headerActions([
+                ExportAction::make()
+                ->exporter(ApplicationsExporter::class)
+                ->label('Başvuru Bilgilerini İndir')
+                ->icon('heroicon-o-arrow-down-on-square')
+                ->color('primary')
+                ->modalHeading('Başvuru Bilgilerini İndir')
+                ->modalDescription('İndirmek istediginiz alanı seçiniz.')
+                ->modalSubmitActionLabel('Tamam')
+                ->modalCancelActionLabel('İptal')
+                // ->formats([
+                //     ExportFormat::Csv,
+                // ]),
             ]);
     }
   

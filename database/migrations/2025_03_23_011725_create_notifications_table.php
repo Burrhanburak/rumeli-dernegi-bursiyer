@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('notifications', function (Blueprint $table) {
-            $table->id();
+            $table->uuid('id')->primary();
             $table->morphs('notifiable'); // Can be either admin or user
             $table->string('title');
             $table->text('message');
@@ -27,6 +27,7 @@ return new class extends Migration
                 'scholarship_changed',     // Scholarship details changed
                 'system'                   // General system notification
             ]);
+            $table->json('data')->nullable();
             $table->unsignedBigInteger('application_id')->nullable();
             $table->unsignedBigInteger('document_id')->nullable();
             $table->unsignedBigInteger('interview_id')->nullable();
@@ -47,5 +48,8 @@ return new class extends Migration
     public function down(): void
     {
         Schema::dropIfExists('notifications');
+        Schema::table('notifications', function (Blueprint $table) {
+            $table->dropColumn('data');
+        });
     }
 };

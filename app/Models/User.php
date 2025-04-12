@@ -242,11 +242,25 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, MustVerif
     }
 
     /**
-     * Get the notifications for the user.
+     * Get the entity's notifications.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\MorphMany
      */
     public function notifications()
     {
-        return $this->morphMany(Notifications::class, 'notifiable');
+        return $this->morphMany(\App\Models\LaravelNotification::class, 'notifiable')
+                ->orderBy('created_at', 'desc');
+    }
+
+    /**
+     * Get the entity's custom notifications.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\MorphMany
+     */
+    public function customNotifications()
+    {
+        return $this->morphMany(\App\Models\Notifications::class, 'notifiable')
+                ->orderBy('created_at', 'desc');
     }
 
     /**

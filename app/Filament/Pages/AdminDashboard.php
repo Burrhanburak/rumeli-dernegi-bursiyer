@@ -46,4 +46,6 @@ class AdminDashboard extends Page
     {
         return 3;
     }
+
+
 }

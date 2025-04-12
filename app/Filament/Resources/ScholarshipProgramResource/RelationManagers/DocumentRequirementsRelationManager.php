@@ -46,6 +46,10 @@ class DocumentRequirementsRelationManager extends RelationManager
 
             ->emptyStateHeading('Evrak Gereksinimi bulunamadı')
             ->emptyStateDescription('Yeni bir evrak gereksinimi eklemek için "Evrak Ekle" düğmesine tıklayın.')
+            ->emptyStateActions([
+                Tables\Actions\CreateAction::make()
+                    ->label('Evrak Ekle'),
+            ])
             ->recordTitleAttribute('id')
             ->columns([
                 Tables\Columns\TextColumn::make('documentType.name')

@@ -40,7 +40,9 @@ class UserPanelProvider extends PanelProvider
             // ->topNavigation()
             // ->collapsedSidebarWidth('9rem')
             // ->sidebarCollapsibleOnDesktop()
-          
+            ->sidebarCollapsibleOnDesktop()
+            ->maxContentWidth('full')
+            ->brandName('Kullanıcı Paneli')
             ->userMenuItems([
                 
                 MenuItem::make()

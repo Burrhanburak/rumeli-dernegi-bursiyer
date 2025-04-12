@@ -22,27 +22,28 @@ class AdvancedStatsOverviewWidget extends BaseWidget
                 ->icon('heroicon-o-user')
                 ->iconColor('primary')
                 ->description('Tüm sistem kullanıcıları')
-                ->descriptionIcon('heroicon-o-chevron-up', 'before')
+                // ->descriptionIcon('heroicon-o-chevron-up', 'before')
                 ->descriptionColor('primary'),
                 
             Stat::make('Toplam Başvurular', Applications::count())
                 ->icon('heroicon-o-document-text')
                 ->description('Tüm burs başvuruları')
-                ->descriptionIcon('heroicon-o-chevron-up', 'before')
+                // ->descriptionIcon('heroicon-o-chevron-up', 'before')
                 ->descriptionColor('success')
                 ->iconColor('success'),
                 
             Stat::make('Toplam Burs Programı', ScholarshipProgram::count())
                 ->icon('heroicon-o-building-library')
                 ->description('Aktif burs programları')
+                ->descriptionColor('warning')
                 ->iconColor('warning'),
                 
             Stat::make('Toplam Görüşmeler', Interviews::count())
                 ->icon('heroicon-o-chat-bubble-left-ellipsis')
                 ->description('Planlanmış görüşmeler')
-                ->descriptionIcon('heroicon-o-chevron-up', 'before')
-                ->descriptionColor('primary')
-                ->iconColor('primary'),
+                // ->descriptionIcon('heroicon-o-chevron-up', 'before')
+                ->descriptionColor('indigo')
+                ->iconColor('indigo'),
                 
             // Stat::make('Toplam İşlemler', ActivityLogs::count())
             //     ->icon('heroicon-o-newspaper')
@@ -54,8 +55,9 @@ class AdvancedStatsOverviewWidget extends BaseWidget
             Stat::make('Toplam Bildirimler', Notifications::count())
                 ->icon('heroicon-o-bell')
                 ->description('Sistem bildirimleri')
-                ->descriptionIcon('heroicon-o-chevron-up', 'before')
-                ->descriptionColor('success')
+
+                // ->descriptionIcon('heroicon-o-chevron-up', 'before')
+                ->descriptionColor('danger')
                 ->iconColor('danger'),
         ];
     }

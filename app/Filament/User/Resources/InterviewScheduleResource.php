@@ -85,9 +85,27 @@ class InterviewScheduleResource extends Resource
                     ->label('Mülakatçı')
                     ->searchable(),
                 Tables\Columns\TextColumn::make('interview_date')
-                    ->label('Mülakat Tarihi')
-                    ->dateTime()
-                    ->sortable(),
+                ->label('Mülakat Tarihi')
+                ->formatStateUsing(function ($state) {
+                    $aylar = [
+                        'January' => 'Ocak',
+                        'February' => 'Şubat',
+                        'March' => 'Mart',
+                        'April' => 'Nisan',
+                        'May' => 'Mayıs',
+                        'June' => 'Haziran',
+                        'July' => 'Temmuz',
+                        'August' => 'Ağustos',
+                        'September' => 'Eylül',
+                        'October' => 'Ekim',
+                        'November' => 'Kasım',
+                        'December' => 'Aralık',
+                    ];
+                    $ay = $state->format('F'); // İngilizce ay adı (örneğin, "April")
+                    $turkceAy = $aylar[$ay]; // Türkçe karşılığı (örneğin, "Nisan")
+                    return $state->format('d') . ' ' . $turkceAy . ' ' . $state->format('Y H.i');
+                })
+                ->sortable(),
                 Tables\Columns\TextColumn::make('location')
                     ->label('Konum')
                     ->searchable(),

@@ -6,6 +6,7 @@ use App\Filament\Resources\UserResource;
 use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
 
+
 class ListUsers extends ListRecords
 {
     protected static string $resource = UserResource::class;
@@ -16,6 +17,8 @@ class ListUsers extends ListRecords
             Actions\CreateAction::make()
                 ->label('Yeni Kullanıcı')
                 ->icon('heroicon-o-user-plus'),
+
+               
         ];
     }
 

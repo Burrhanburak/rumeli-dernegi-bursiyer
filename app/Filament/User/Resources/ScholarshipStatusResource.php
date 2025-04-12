@@ -127,11 +127,48 @@ class ScholarshipStatusResource extends Resource
                     ->sortable(),
                 Tables\Columns\TextColumn::make('start_date')
                     ->label('Başlangıç Tarihi')
-                    ->date()
+                    ->formatStateUsing(function ($state) {
+                        $aylar = [
+                            'January' => 'Ocak',
+                            'February' => 'Şubat',
+                            'March' => 'Mart',
+                            'April' => 'Nisan',
+                            'May' => 'Mayıs',
+                            'June' => 'Haziran',
+                            'July' => 'Temmuz',
+                            'August' => 'Ağustos',
+                            'September' => 'Eylül',
+                            'October' => 'Ekim',
+                            'November' => 'Kasım',
+                            'December' => 'Aralık',
+                        ];
+                        $ay = $state->format('F'); // İngilizce ay adı (örneğin, "April")
+                        $turkceAy = $aylar[$ay]; // Türkçe karşılığı (örneğin, "Nisan")
+                        return $state->format('d') . ' ' . $turkceAy . ' ' . $state->format('Y H.i');
+                    })
                     ->sortable(),
+                
                 Tables\Columns\TextColumn::make('end_date')
                     ->label('Bitiş Tarihi')
-                    ->date()
+                    ->formatStateUsing(function ($state) {
+                        $aylar = [
+                            'January' => 'Ocak',
+                            'February' => 'Şubat',
+                            'March' => 'Mart',
+                            'April' => 'Nisan',
+                            'May' => 'Mayıs',
+                            'June' => 'Haziran',
+                            'July' => 'Temmuz',
+                            'August' => 'Ağustos',
+                            'September' => 'Eylül',
+                            'October' => 'Ekim',
+                            'November' => 'Kasım',
+                            'December' => 'Aralık',
+                        ];
+                        $ay = $state->format('F'); // İngilizce ay adı (örneğin, "April")
+                        $turkceAy = $aylar[$ay]; // Türkçe karşılığı (örneğin, "Nisan")
+                        return $state->format('d') . ' ' . $turkceAy . ' ' . $state->format('Y H.i');
+                    })
                     ->sortable(),
                 Tables\Columns\TextColumn::make('status')
                     ->label('Durum')

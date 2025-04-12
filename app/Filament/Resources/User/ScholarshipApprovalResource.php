@@ -364,14 +364,16 @@ class ScholarshipApprovalResource extends Resource
                 Tables\Actions\ViewAction::make()
                     ->label('Görüntüle'),
                 Tables\Actions\EditAction::make()
-                    ->label('Değerlendir'),
+                    ->label('Düzenle'),
                 Tables\Actions\Action::make('approve')
-                    ->label('Kabul Et')
+                    ->label('Bursu Onayla')
                     ->icon('heroicon-o-check')
                     ->color('success')
                     ->form([
                         Forms\Components\Select::make('scholarship_amount')
                             ->label('Burs Miktarı (₺)')
+                            ->placeholder(false)
+                            ->selectablePlaceholder(false)
                             ->options([
                                 '500' => '500 ₺',
                                 '750' => '750 ₺',

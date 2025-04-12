@@ -13,6 +13,10 @@ use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
 use Illuminate\Auth\Events\Failed;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Notifications\DatabaseNotification;
+use Illuminate\Support\Facades\Config;
+use Filament\Tables\Actions\ExportAction;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -27,8 +31,14 @@ class AppServiceProvider extends ServiceProvider
         //     \App\Listeners\SendEmailVerificationNotification::class
         // );
         
-        // Admin ve kullanıcı panelleri için özel login response sınıflarını bağlama
+        // Configure database notifications for compatibility
+        config(['database.connections.sqlite.foreign_key_constraints' => true]);
         
+        // Use our custom LaravelNotification class
+        $this->app->bind(
+            \Illuminate\Notifications\DatabaseNotification::class,
+            \App\Models\LaravelNotification::class
+        );
     }
 
     /**
@@ -38,6 +48,14 @@ class AppServiceProvider extends ServiceProvider
     {
         // Register observers
         Applications::observe(ApplicationObserver::class);
+
+        // Add unread method to MorphMany relation
+        MorphMany::macro('unread', function () {
+            return $this->where('is_read', false);
+        });
+
+        // We need a different approach for Filament export notifications
+        // The previous approach with notifyUsing method doesn't work
 
         // Özel boş tablo başlığı ve açıklaması
         Table::configureUsing(function (Table $table): void {

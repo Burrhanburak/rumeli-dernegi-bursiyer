@@ -25,8 +25,11 @@ class ScholarshipProgram extends Model
         'program_start_date',
         'program_end_date',
         'status',
+        'status_reason',
+        'is_active',
         'max_recipients',
         'created_by',
+        'last_updated_by',
         'requirements',
         'notes',
     ];
@@ -42,7 +45,7 @@ class ScholarshipProgram extends Model
         'application_end_date' => 'date',
         'program_start_date' => 'date',
         'program_end_date' => 'date',
-        'status' => 'boolean',
+        'is_active' => 'boolean',
         'max_recipients' => 'integer',
     ];
     
@@ -96,4 +99,12 @@ public function interview()
     return $this->hasMany(Interview::class, 'application_id');
 
 }
+
+    /**
+     * Get the admin who last updated this program.
+     */
+    public function lastUpdatedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'last_updated_by');
+    }
 }

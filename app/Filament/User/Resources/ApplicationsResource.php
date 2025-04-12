@@ -55,16 +55,22 @@ Forms\Components\Section::make('Kişisel Bilgiler')
 ->schema([
     // Önce Burs Programı seçimi
     Forms\Components\Grid::make()
-        ->schema([
-            Forms\Components\Select::make('program_id')
-                ->relationship('program', 'name')
-                ->label('Burs Programı')
-                ->placeholder('Başvurmak istediğiniz burs programını seçin')
-                ->options(ScholarshipProgram::all()->pluck('name', 'id'))
-                ->preload()
-                ->required()
-                ->searchable(),
-        ])->columns(1),
+    ->schema([
+        Forms\Components\Select::make('program_id')
+            ->relationship('program', 'name', function ($query) {
+                // Only show programs that are active and not suspended or terminated
+                return $query->where('is_active', true)
+                    ->where(function ($query) {
+                        $query->where('status', 'aktif')
+                            ->orWhereNull('status');
+                    });
+            })
+            ->label('Burs Programı')
+            ->placeholder('Başvurmak istediğiniz burs programını seçin')
+            ->preload()
+            ->required()
+            ->searchable(),
+    ])->columns(1),
         
     Forms\Components\Grid::make()
         ->schema([
@@ -141,7 +147,7 @@ Forms\Components\Section::make('Kişisel Bilgiler')
                 ->options([
                     'Male' => 'Erkek',
                     'Female' => 'Kadın',
-                    'Other' => 'Diğer'
+                    // 'Other' => 'Diğer'
                 ]),
         ])->columns(4),
         
@@ -847,6 +853,7 @@ Forms\Components\Section::make('Kişisel Bilgiler')
                                 ->placeholder('1. referansınızın telefon numarası')
                                 ->defaultCountry('tr')
                                 ->initialCountry('tr')
+                                ->required()
                                 ->rules(['phone:TR'])
                                 ->validationMessages([
                                     'phone' => 'Lütfen geçerli bir telefon numarası girin.'

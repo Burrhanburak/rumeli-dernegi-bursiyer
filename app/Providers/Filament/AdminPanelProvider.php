@@ -23,6 +23,7 @@ use Filament\Enums\ThemeMode;
 use App\Filament\Widgets\AplicationsChart;
 use App\Filament\Pages\Auth\Login as AdminLogin;
 use Filament\Navigation\NavigationGroup;
+use Filament\Navigation\NavigationItem;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -36,6 +37,7 @@ class AdminPanelProvider extends PanelProvider
             ->login(AdminLogin::class)
 
             ->brandName('Admin Panel')
+            
             // ->brandLogo(asset('images/logo.svg'))
             ->favicon(asset('images/favicon.ico'))
             ->colors([
@@ -67,6 +69,31 @@ class AdminPanelProvider extends PanelProvider
                 'İletişim',
                 'Sistem',
             ])
+            ->databaseNotifications()
+         
+
+            // ->navigationGroups([
+            //     NavigationGroup::make()
+            //         ->label('Başvuru Yönetimi')
+            //         ->collapsible()
+            //         ->icon('heroicon-o-document-text')
+            //         ->items([
+            //             NavigationItem::make('Başvurular')
+            //                 ->icon('heroicon-o-document'),
+            //                 // ->url(),
+            //             NavigationItem::make('Ön Değerlendirme')
+            //                 ->icon('heroicon-o-clipboard-document-list'),
+            //                 // ->url(route('filament.admin.resources.on-degerlendirme.index')),
+            //             NavigationItem::make('Kabul Edilen Başvurular')
+            //                 ->icon('heroicon-o-check-circle'),
+            //                 // ->url(route('filament.admin.resources.kabul-edilen-basvurular.index')),
+            //             NavigationItem::make('Reddedilen Başvurular')
+            //                 ->icon('heroicon-o-x-circle'),
+            //                 // ->url(route('filament.admin.resources.reddedilen-basvurular.index')),
+            //         ]),
+                   
+
+            //         ])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
             ->widgets([
                 Widgets\AccountWidget::class,

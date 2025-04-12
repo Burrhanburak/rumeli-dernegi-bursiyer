@@ -18,6 +18,9 @@ use Ysfkaya\FilamentPhoneInput\Tables\PhoneColumn;
 use Ysfkaya\FilamentPhoneInput\Infolists\PhoneEntry;
 use Ysfkaya\FilamentPhoneInput\PhoneInputNumberType;
 use Illuminate\Support\Facades\Auth;
+use Filament\Tables\Actions\ExportAction;
+use App\Filament\Exports\UserExporter;
+use Filament\Notifications\Notification;
 class UserResource extends Resource
 {
     protected static ?string $model = User::class;
@@ -293,6 +296,27 @@ class UserResource extends Resource
                         ->label(' Tümünü Sil')
                 ])
                 ->label('Kullanıcı İşlemleri'),
+            ])
+            ->headerActions([
+                ExportAction::make()
+                ->exporter(UserExporter::class)
+                ->label(' Kullanıcı Bilgilerini İndir')
+                ->icon('heroicon-o-arrow-down-on-square')
+                ->color('primary')
+                ->modalHeading('Kullanıcı Bilgilerini İndir')
+                ->modalDescription('İndirmek istediginiz alanı seçiniz.')
+                ->modalSubmitActionLabel('Tamam')
+                ->modalCancelActionLabel('İptal')
+                // ->action(function () {
+                //     Notification::make()
+                //         ->title('Kullanıcı Bilgileri İndirildi')
+                //         ->body('Kullanıcı bilgileri başarıyla indirildi.')
+                //         ->success()
+                //         ->send();
+                // })
+                
+                
+                
             ]);
     }
 
