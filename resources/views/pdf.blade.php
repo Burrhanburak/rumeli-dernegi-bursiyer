@@ -161,21 +161,8 @@
         <!-- Logo/Profile Image -->
         @if($record->image)
             <div class="image-container">
-                @php
-                    try {
-                        $imagePath = storage_path('app/public/' . $record->image);
-                        if (file_exists($imagePath)) {
-                            $imageData = base64_encode(file_get_contents($imagePath));
-                            $src = 'data:image/' . pathinfo($imagePath, PATHINFO_EXTENSION) . ';base64,' . $imageData;
-                        } else {
-                            $src = '';
-                        }
-                    } catch (\Exception $e) {
-                        $src = '';
-                    }
-                @endphp
-                @if($src)
-                    <img class="profile-image" src="{{ $src }}" alt="Profil Resmi">
+                @if(isset($record->image_data) && $record->image_data)
+                    <img class="profile-image" src="{{ $record->image_data }}" alt="Profil Resmi">
                 @else
                     <div class="profile-image" style="display: flex; align-items: center; justify-content: center; background: #f8f8f8;">
                         <span>Resim Yok</span>
