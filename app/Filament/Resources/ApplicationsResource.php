@@ -1973,24 +1973,8 @@ Forms\Components\Grid::make()
 
            
             
-            ])
-            ->headerActions([
-                ExportAction::make()
-                ->exporter(ApplicationsExporter::class)
-                ->label('İndir')
-                
-                ->icon('heroicon-o-arrow-down-on-square')
-                ->color('primary')
-                ->modalHeading('Başvuru Bilgilerini İndir')
-                ->modalDescription('İndirmek istediginiz alanı seçiniz.')
-                ->modalSubmitActionLabel('Tamam')
-                ->modalCancelActionLabel('İptal')
-                ->formats([
-                    ExportFormat::Csv,
-                    ExportFormat::Xlsx,
-                    // ExportFormat::Pdf,
-                ]),
-            ]);
+                    ]);
+       
     }
   
     public static function getEloquentQuery(): Builder
