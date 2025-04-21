@@ -17,6 +17,7 @@ use Filament\Forms\Components\TextInput;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Model;
 
 use Ysfkaya\FilamentPhoneInput\Forms\PhoneInput;
 use Ysfkaya\FilamentPhoneInput\Tables\PhoneColumn;
@@ -28,6 +29,8 @@ use Filament\Tables\Actions\ExportAction;
 use Filament\Actions\Exports\Enums\ExportFormat;
 use App\Filament\Exports\ApplicationsExporter;
 use Filament\Tables\Actions\Action;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Facades\Blade;
 class ApplicationsResource extends Resource
 {
     protected static ?string $model = Applications::class;
@@ -59,16 +62,22 @@ Forms\Components\Section::make('Kişisel Bilgiler')
 ->schema([
 // Önce Burs Programı seçimi
 Forms\Components\Grid::make()
-    ->schema([
-        Forms\Components\Select::make('program_id')
-            ->relationship('program', 'name')
-            ->label('Burs Programı')
-            ->placeholder('Başvurmak istediğiniz burs programını seçin')
-            ->options(ScholarshipProgram::all()->pluck('name', 'id'))
-            ->preload()
-            ->required()
-            ->searchable(),
-    ])->columns(1),
+->schema([
+    Forms\Components\Select::make('program_id')
+        ->relationship('program', 'name', function ($query) {
+            // Only show programs that are active and not suspended or terminated
+            return $query->where('is_active', true)
+                ->where(function ($query) {
+                    $query->where('status', 'aktif')
+                        ->orWhereNull('status');
+                });
+        })
+        ->label('Burs Programı')
+        ->placeholder('Başvurmak istediğiniz burs programını seçin')
+        ->preload()
+        ->required()
+        ->searchable(),
+])->columns(1),
     
 Forms\Components\Grid::make()
     ->schema([
@@ -870,7 +879,7 @@ Forms\Components\Grid::make()
                             ->label('2. Referans Telefon')
                             ->placeholder('2. referansınızın telefon numarası (varsa)')
                             ->defaultCountry('tr')
-                            ->required()
+                           
                             ->initialCountry('tr')
                             ->rules(['phone:TR'])
                             ->validationMessages([
@@ -952,6 +961,7 @@ Forms\Components\Grid::make()
                 Tables\Actions\CreateAction::make()
                     ->label('Yeni Başvuru')
             ])
+        
             ->searchable()
             ->searchPlaceholder('Ara...')
             ->columns([
@@ -1266,7 +1276,7 @@ Forms\Components\Grid::make()
                     ->modalDescription('Bu başvuruyu silmek istediğinizden emin misiniz?')
                     ->modalSubmitActionLabel('Evet, Sil')
                     ->modalCancelActionLabel('İptal'),
-                
+                   
                 // Tables\Actions\Action::make('viewDocuments')
                 //     ->label('Evrakları Görüntüle')
                 //     ->icon('heroicon-o-document-text')
@@ -1737,10 +1747,18 @@ Forms\Components\Grid::make()
                             ->danger()
                             ->send();
                     })
+                    
                     ->requiresConfirmation()
                     ->modalHeading('Başvuru reddedilsin mi?')
                     ->modalDescription('Bu başvuruyu reddetmek istediğinizden emin misiniz? Bu işlem geri alınamaz.')
                     ->modalSubmitActionLabel('Evet, Reddet'),
+
+                    Tables\Actions\Action::make('pdf') 
+                    ->label('PDF')
+                    ->color('success')
+                    ->icon('heroicon-o-folder-arrow-down')
+                    ->url(fn (Applications $record) => route('pdf', $record))
+                    ->openUrlInNewTab(),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
@@ -1959,16 +1977,18 @@ Forms\Components\Grid::make()
             ->headerActions([
                 ExportAction::make()
                 ->exporter(ApplicationsExporter::class)
-                ->label('Başvuru Bilgilerini İndir')
+                ->label('İndir')
                 ->icon('heroicon-o-arrow-down-on-square')
                 ->color('primary')
                 ->modalHeading('Başvuru Bilgilerini İndir')
                 ->modalDescription('İndirmek istediginiz alanı seçiniz.')
                 ->modalSubmitActionLabel('Tamam')
                 ->modalCancelActionLabel('İptal')
-                // ->formats([
-                //     ExportFormat::Csv,
-                // ]),
+                ->formats([
+                    ExportFormat::Csv,
+                    ExportFormat::Xlsx,
+                    // ExportFormat::Pdf,
+                ]),
             ]);
     }
   

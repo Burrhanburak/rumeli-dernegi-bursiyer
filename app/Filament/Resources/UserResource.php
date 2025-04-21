@@ -20,6 +20,7 @@ use Ysfkaya\FilamentPhoneInput\PhoneInputNumberType;
 use Illuminate\Support\Facades\Auth;
 use Filament\Tables\Actions\ExportAction;
 use App\Filament\Exports\UserExporter;
+use Filament\Actions\Exports\Enums\ExportFormat;
 use Filament\Notifications\Notification;
 class UserResource extends Resource
 {
@@ -300,13 +301,18 @@ class UserResource extends Resource
             ->headerActions([
                 ExportAction::make()
                 ->exporter(UserExporter::class)
-                ->label(' Kullanıcı Bilgilerini İndir')
+                ->label('İndir')
                 ->icon('heroicon-o-arrow-down-on-square')
                 ->color('primary')
                 ->modalHeading('Kullanıcı Bilgilerini İndir')
                 ->modalDescription('İndirmek istediginiz alanı seçiniz.')
                 ->modalSubmitActionLabel('Tamam')
                 ->modalCancelActionLabel('İptal')
+                ->formats([
+                    ExportFormat::Csv,
+                    ExportFormat::Xlsx,
+                    // ExportFormat::Pdf,
+                ]),
                 // ->action(function () {
                 //     Notification::make()
                 //         ->title('Kullanıcı Bilgileri İndirildi')

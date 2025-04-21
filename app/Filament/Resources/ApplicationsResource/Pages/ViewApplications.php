@@ -25,6 +25,8 @@ class ViewApplications extends ViewRecord
                 ->label('Sil')
                 ->icon('heroicon-o-trash')
                 ->color('danger'),
+
+                
         ];
     }
     
