@@ -1978,7 +1978,7 @@ Forms\Components\Grid::make()
                 ExportAction::make()
                 ->exporter(ApplicationsExporter::class)
                 ->label('İndir')
-                ->queue()
+                
                 ->icon('heroicon-o-arrow-down-on-square')
                 ->color('primary')
                 ->modalHeading('Başvuru Bilgilerini İndir')

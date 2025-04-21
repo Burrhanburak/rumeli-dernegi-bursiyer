@@ -302,7 +302,7 @@ class UserResource extends Resource
                 ExportAction::make()
                 ->exporter(UserExporter::class)
                 ->label('İndir')
-                ->queue()
+             
                 ->icon('heroicon-o-arrow-down-on-square')
                 ->color('primary')
                 ->modalHeading('Kullanıcı Bilgilerini İndir')
