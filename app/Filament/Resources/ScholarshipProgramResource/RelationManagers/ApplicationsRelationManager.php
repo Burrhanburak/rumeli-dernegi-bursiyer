@@ -93,11 +93,11 @@ class ApplicationsRelationManager extends RelationManager
     {
         return $table
         ->emptyStateHeading('Başvuru bulunamadı')
-        ->emptyStateDescription('Yeni bir başvuru eklemek için "Yeni Başvuru" düğmesine tıklayın.')
-        ->emptyStateActions([
-            Tables\Actions\CreateAction::make()
-                ->label('Yeni Başvuru')
-        ])
+        ->emptyStateDescription('')
+        // ->emptyStateActions([
+        //     Tables\Actions\CreateAction::make()
+        //         ->label('Yeni Başvuru')
+        // ])
         ->searchable()
         ->searchPlaceholder('Ara...')
         ->columns([
