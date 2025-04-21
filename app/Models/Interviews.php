@@ -10,6 +10,9 @@ class Interviews extends Model
 {
     use HasFactory;
     
+    // Make sure the table name matches what's expected in the database
+    protected $table = 'interviews';
+    
     /**
      * The attributes that are mass assignable.
      *

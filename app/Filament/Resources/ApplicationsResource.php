@@ -1985,8 +1985,8 @@ Forms\Components\Grid::make()
     public static function getRelations(): array
     {
         return [
-            \App\Filament\Resources\ApplicationsResource\RelationManagers\DocumentsRelationManager::make(),
-            \App\Filament\Resources\ApplicationsResource\RelationManagers\InterviewsRelationManager::make(),
+            RelationManagers\DocumentsRelationManager::class,
+            RelationManagers\InterviewsRelationManager::class,
         ];
     }
     public static function getPages(): array

@@ -326,6 +326,14 @@ class Applications extends Model
     }
     
     /**
+     * Get the interviews for this application - alias for Turkish naming.
+     */
+    public function mulakat()
+    {
+        return $this->hasMany(Interviews::class, 'application_id');
+    }
+    
+    /**
      * Get the scholarships associated with this application.
      */
     public function scholarships()

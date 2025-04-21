@@ -62,7 +62,8 @@ class DocumentsRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return $table
-        
+        ->emptyStateHeading('Başvuru Bulunamadı')
+        ->emptyStateDescription('Başlamak için bir Belgeler oluşturun')
         ->recordTitleAttribute('document_type_id')
             ->columns([
                 Tables\Columns\TextColumn::make('documentType.name')

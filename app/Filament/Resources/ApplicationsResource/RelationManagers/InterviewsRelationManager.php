@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class InterviewsRelationManager extends RelationManager
 {
-    protected static string $relationship = 'interviews';
+    protected static string $relationship = 'mulakat';
 
     protected static ?string $navigationLabel = 'Mülakatlar';
     
@@ -70,6 +70,8 @@ class InterviewsRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return $table
+            ->emptyStateHeading('Mülakat Bulunamadı')
+            ->emptyStateDescription('Başlamak için bir Mülakat oluşturun')
             ->recordTitleAttribute('id')
             ->columns([
                 Tables\Columns\TextColumn::make('interviewer.name')
