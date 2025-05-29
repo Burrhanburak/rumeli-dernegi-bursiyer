@@ -53,19 +53,18 @@ class UserResource extends Resource
             ->collapsible()
                 ->description('Kişisel bilgilerinizi bu alandan düzenleyebilirsiniz.')
                 ->schema([
+                   
                     // İlk satır - Ad ve Soyad
                     Forms\Components\TextInput::make('name')
                         ->label('Ad')
                         ->placeholder('Adınızı girin')
                         ->required()
-                        ->default(Auth::user()->name)
                         ->maxLength(255),
                     
                     Forms\Components\TextInput::make('surname')
                         ->label('Soyad')
                         ->placeholder('Soyadınızı girin')
                         ->required()
-                        ->default(Auth::user()->surname)
                         ->maxLength(255),
                     
                     // İkinci satır - Kimlik ve Doğum Tarihi
@@ -74,16 +73,13 @@ class UserResource extends Resource
                         ->placeholder('T.C. Kimlik Numaranız')
                         ->required()
                         ->numeric()
-                        ->disabled('edit')
-                        ->default(Auth::user()->national_id)
                         ->length(11),
                     
                     Forms\Components\DatePicker::make('birth_date')
                         ->label('Doğum Tarihi')
                         ->native(false) 
                         ->displayFormat('d/m/Y')
-                        ->placeholder('Doğum Tarihiniz')
-                        ->default(Auth::user()->birth_date),
+                        ->placeholder('Doğum Tarihiniz'),
                     
                     // Üçüncü satır - E-posta ve Doğrulama
                     Forms\Components\TextInput::make('email')
@@ -91,7 +87,6 @@ class UserResource extends Resource
                         ->placeholder('E-posta adresinizi girin')
                         ->email()
                         ->required()
-                        ->default(Auth::user()->email)
                         ->maxLength(255)
                         ->unique(ignoreRecord: true),
                     

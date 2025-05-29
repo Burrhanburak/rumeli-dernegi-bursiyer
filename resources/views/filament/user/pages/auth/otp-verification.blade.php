@@ -7,7 +7,7 @@
             <p class="mt-3 text-gray-500 dark:text-gray-400">
                 {{ __('E-posta adresinize bir doğrulama kodu gönderildi:') }}
             </p>
-            <div class="mt-4 mb-6 py-3 px-4 bg-gray-50 dark:bg-gray-700/30 rounded-lg inline-block">
+            <div class="mt-4 mb-6 py-3 px-4 bg-gray-50 dark:bg-black/30 rounded-lg inline-block">
                 <p class="font-medium text-gray-900 dark:text-white">{{ auth()->user()->email }}</p>
             </div>
         </div>

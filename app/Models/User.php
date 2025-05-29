@@ -43,6 +43,7 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, MustVerif
         'is_admin',
         'national_id', // tc_kimlik_no
         'name',
+        'must_change_password',
         'surname',
         'birth_date', // dogum_tarihi
         'birth_place', // dogum_yeri
@@ -171,6 +172,7 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, MustVerif
             'is_admin' => 'boolean',
             'birth_date' => 'date', // dogum_tarihi
             'terms' => 'boolean',
+            'must_change_password' => 'boolean',
         ];
     }
 

@@ -88,13 +88,12 @@ Forms\Components\Grid::make()
             ->imageEditor()
             ->directory('applications/images')
             ->required()
-            ->default(function () {
-                if (Auth::user()->image) {
-                    // Just use the path without Storage::url()
-                    return Auth::user()->image;
-                }
-                return null;
-            }),
+            // ->default(function () { // Removed default for admin creation
+            //     if (Auth::user()->image) {
+            //         return Auth::user()->image;
+            //     }
+            //     return null;
+            // }),
     ])->columns(1),
     
 Forms\Components\Grid::make()
@@ -107,21 +106,21 @@ Forms\Components\Grid::make()
             ->length(11)
             // ->disabled('edit')
             ->disabled(fn (string $operation): bool => in_array($operation, ['view', 'edit']))
-            ->default(Auth::user()->national_id),
+            ,
             
         Forms\Components\TextInput::make('name')
             ->label('Ad')
             ->placeholder('Adınız')
             ->required()
             ->maxLength(255)
-            ->default(Auth::user()->name),
+      ,
             
         Forms\Components\TextInput::make('surname')
             ->label('Soyad')
             ->placeholder('Soyadınız')
             ->required()
             ->maxLength(255)
-            ->default(Auth::user()->surname),
+            ,
     ])->columns(3),
     
 Forms\Components\Grid::make()
@@ -132,7 +131,7 @@ Forms\Components\Grid::make()
             ->displayFormat('d/m/Y')
             ->placeholder('Doğum Tarihiniz')
             ->required()
-            ->default(Auth::user()->birth_date),
+            ,
             
         Forms\Components\TextInput::make('birth_place')
             ->label('Doğum Yeri')
@@ -173,7 +172,7 @@ Forms\Components\Grid::make()
         ->validationMessages([
             'phone' => 'Lütfen geçerli bir telefon numarası girin.'
         ])
-        ->default(Auth::user()->phone),
+       ,
        
      
             
@@ -183,7 +182,7 @@ Forms\Components\Grid::make()
             ->required()
             ->email()
             ->maxLength(255)
-            ->default(Auth::user()->email),
+            ,
     ])->columns(2),
     
 Forms\Components\Grid::make()
@@ -193,7 +192,7 @@ Forms\Components\Grid::make()
             ->required()
             ->placeholder('Adresiniz')
             ->rows(2)
-            ->default(Auth::user()->address),
+            ,
     ])->columns(1),
     
 Forms\Components\Grid::make()
@@ -203,14 +202,14 @@ Forms\Components\Grid::make()
             ->required()
             ->placeholder('Şehir')
             ->maxLength(255)
-            ->default(Auth::user()->city),
+           ,
             
         Forms\Components\TextInput::make('postal_code')
             ->label('Posta Kodu')
             ->required()
             ->placeholder('Posta kodunuz')
             ->maxLength(255)
-            ->default(Auth::user()->postal_code),
+         ,
     ])->columns(2),
     
 Forms\Components\Grid::make()

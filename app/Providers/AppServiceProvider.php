@@ -17,6 +17,8 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Notifications\DatabaseNotification;
 use Illuminate\Support\Facades\Config;
 use Filament\Tables\Actions\ExportAction;
+use Barryvdh\DomPDF\PDF;
+use Illuminate\Support\Facades\Log;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -49,6 +51,25 @@ class AppServiceProvider extends ServiceProvider
         // Register observers
         Applications::observe(ApplicationObserver::class);
 
+        // Check and create storage symlink if it doesn't exist
+        $publicPath = public_path('storage');
+        $storagePath = storage_path('app/public');
+        
+        if (!file_exists($publicPath)) {
+            try {
+                // Create the symbolic link
+                if (PHP_OS_FAMILY === 'Windows') {
+                    // Windows needs different symlink handling
+                    exec('mklink /D "' . $publicPath . '" "' . $storagePath . '"');
+                } else {
+                    symlink($storagePath, $publicPath);
+                }
+                Log::info("Created storage symlink automatically");
+            } catch (\Exception $e) {
+                Log::error("Failed to create storage symlink: " . $e->getMessage());
+            }
+        }
+        
         // Add unread method to MorphMany relation
         MorphMany::macro('unread', function () {
             return $this->where('is_read', false);
@@ -108,6 +129,15 @@ class AppServiceProvider extends ServiceProvider
         //             ->log('Giriş başarısız');
         //     }
         // });
+
+        // Configure DomPDF for better image handling
+        if (class_exists('\\Barryvdh\\DomPDF\\ServiceProvider')) {
+            Config::set('dompdf.options.enable_remote', true);
+            Config::set('dompdf.options.enable_php', true);
+            Config::set('dompdf.options.enable_html5_parser', true);
+            Config::set('dompdf.options.isRemoteEnabled', true);
+            Config::set('dompdf.options.isPhpEnabled', true);
+        }
     }
 
     public $singletons = [

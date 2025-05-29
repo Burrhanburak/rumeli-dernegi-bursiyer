@@ -12,6 +12,8 @@ use Illuminate\Foundation\Auth\EmailVerificationRequest;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
 use App\Http\Controllers\PdfController;
+use App\Http\Controllers\Auth\PasswordChangeController;
+
 Route::get('/', function () {
     return view('welcome');
 })->name('home');
@@ -27,6 +29,11 @@ Route::middleware(['auth'])->group(function () {
     Route::get('settings/appearance', Appearance::class)->name('settings.appearance');
 
     Route::get('pdf/{application}', PdfController::class)->name('pdf'); 
+});
+
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('/password/change', [PasswordChangeController::class, 'showChangeForm'])->name('password.change');
+    Route::post('/password/change', [PasswordChangeController::class, 'changePassword'])->name('password.update');
 });
 
 // Add a redirect for the standard 'login' route that Laravel's auth system looks for

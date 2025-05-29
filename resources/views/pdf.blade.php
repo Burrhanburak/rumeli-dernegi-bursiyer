@@ -162,7 +162,7 @@
         @if($record->image)
             <div class="image-container">
                 @if(isset($record->image_data) && $record->image_data)
-                    <img class="profile-image" src="{{ $record->image_data }}" alt="Profil Resmi">
+                    <img class="profile-image" src="{{ $record->image_data }}" alt="Profil Resmi" onerror="this.style.display='none';">
                 @else
                     <div class="profile-image" style="display: flex; align-items: center; justify-content: center; background: #f8f8f8;">
                         <span>Resim Yok</span>

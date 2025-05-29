@@ -29,6 +29,8 @@ use App\Filament\User\Pages\Auth\RequestPasswordReset;
 use App\Filament\User\Pages\Auth\EmailVerificationPrompts;
 use App\Filament\User\Pages\Auth\OtpVerificationPrompt;
 use Filament\Navigation\MenuItem;
+use App\Http\Middleware\EnsurePasswordIsChanged;
+
 class UserPanelProvider extends PanelProvider
 {
     public function panel(Panel $panel): Panel
@@ -108,6 +110,7 @@ class UserPanelProvider extends PanelProvider
             ->authMiddleware([
                 Authenticate::class,
                 \App\Http\Middleware\RedirectToProperPanelMiddleware::class,
+                EnsurePasswordIsChanged::class,
             ])
             ->authGuard('web');
            

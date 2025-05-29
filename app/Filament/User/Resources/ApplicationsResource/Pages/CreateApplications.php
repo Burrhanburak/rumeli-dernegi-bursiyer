@@ -50,6 +50,12 @@ class CreateApplications extends CreateRecord
     // Automatically set the user_id to the current logged-in user's ID
     protected function mutateFormDataBeforeCreate(array $data): array
     {
+        // Ensure the user is authenticated
+        if (!auth()->check() || !auth()->id()) {
+            Log::error('User is not authenticated during application creation.');
+            throw new \Exception('User authentication is required to create an application.');
+        }
+
         // Core required fields that must be set
         $data['user_id'] = auth()->id();
         $data['application_date'] = now()->format('Y-m-d');

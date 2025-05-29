@@ -49,11 +49,13 @@ class ProfileResource extends Resource
     {
         return $form
             ->schema([
+                
                 Forms\Components\Section::make('Kişisel Bilgiler')
                 ->description('Kişisel bilgilerinizi bu alandan düzenleyebilirsiniz.')
                 ->icon('heroicon-o-user')
                 ->collapsible()
                     ->schema([
+                        
                         Forms\Components\TextInput::make('name')
                             ->label('Adı')
                             ->placeholder('Adınızı giriniz')
@@ -102,6 +104,7 @@ class ProfileResource extends Resource
                         Forms\Components\FileUpload::make('image')
                             ->label('Profil Fotoğrafı')
                             ->image()
+                            ->default(Auth::user()->image)
                             ->directory('profile-photos')
                             ->visibility('public')
                             ->maxSize(1024) // 1MB

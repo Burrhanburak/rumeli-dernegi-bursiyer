@@ -112,6 +112,7 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 \App\Http\Middleware\CustomFilamentAuthenticate::class,
+                
             ])
             ->authGuard('web')
             ->globalSearchKeyBindings(['command+k', 'ctrl+k'])
